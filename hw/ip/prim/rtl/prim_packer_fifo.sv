@@ -7,51 +7,52 @@
 // No masking or flush functions supported
 
 // Timings - case where InW < OutW
-// clk_i      __|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__
-// wvalid_i   _____|~~~~|_____|~~~~|_____|~~~~|_____|~~~~|___________________
+// clk_p      __|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__
+// wvalid_i   _____|‾‾‾‾|_____|‾‾‾‾|_____|‾‾‾‾|_____|‾‾‾‾|___________________
 // wdata_i    Val N     |Val N+1   |Val N+2   |Val N+3   |-------------------
-// wready_o   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|__________|~~~~~~~~
-// rvalid_o   ___________________________________________|~~~~~~~~~~|________
+// wready_o   ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|__________|‾‾‾‾‾‾‾‾
+// rvalid_o   ___________________________________________|‾‾‾‾‾‾‾‾‾‾|________
 // rdata_o    -------------------------------------------|Val       |--------
-// rready_i   _________________________________________________|~~~~|________
+// rready_i   _________________________________________________|‾‾‾‾|________
 // depth_o    0000000000|1111111111|2222222222|3333333333|4444444444|00000000
 
 
 // Timings - case where InW > OutW
-// clk_i      __|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__
-// wvalid_i   _____|~~~~|____________________________________________________
+// clk_p      __|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__
+// wvalid_i   _____|‾‾‾‾|____________________________________________________
 // wdata_i    -----|Val |----------------------------------------------------
-// wready_o   ~~~~~~~~~~|___________________________________________|~~~~~~~~
-// rvalid_o   __________|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|________
+// wready_o   ‾‾‾‾‾‾‾‾‾‾|___________________________________________|‾‾‾‾‾‾‾‾
+// rvalid_o   __________|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|________
 // rdata_o    ----------|Val N     |Val N+1   |Val N+2   |Val N+3   |--------
-// rready_i   ________________|~~~~|_____|~~~~|_____|~~~~|_____|~~~~|________
+// rready_i   ________________|‾‾‾‾|_____|‾‾‾‾|_____|‾‾‾‾|_____|‾‾‾‾|________
 // depth_o    0000000000|4444444444|3333333333|2222222222|1111111111|00000000
 
 
 // Timings - case where InW = OutW
-// clk_i      __|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__~~|__|~~|__
-// wvalid_i   _____|~~~~|____________________________________________________
+// clk_p      __|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__‾‾|__|‾‾|__
+// wvalid_i   _____|‾‾‾‾|____________________________________________________
 // wdata_i    -----|Val |----------------------------------------------------
-// wready_o   ~~~~~~~~~~|__________|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// rvalid_o   __________|~~~~~~~~~~|_________________________________________
+// wready_o   ‾‾‾‾‾‾‾‾‾‾|__________|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+// rvalid_o   __________|‾‾‾‾‾‾‾‾‾‾|_________________________________________
 // rdata_o    ----------|Val       |-----------------------------------------
-// rready_i   ________________|~~~~|_________________________________________
+// rready_i   ________________|‾‾‾‾|_________________________________________
 // depth_o    0000000000|1111111111|00000000000000000000000000000000000000000
 
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_packer_fifo #(
+module jh_prim_packer_fifo #(
   parameter int InW  = 32,
   parameter int OutW = 8,
   parameter bit ClearOnRead = 1'b1, // if == 1 always output 0 after read
+  parameter bit LookAheadWithoutBubble = 1'b1,
   // derived parameters
   localparam int MaxW = (InW > OutW) ? InW : OutW,
   localparam int MinW = (InW < OutW) ? InW : OutW,
   localparam int DepthW = $clog2(MaxW/MinW)
 ) (
-  input logic clk_i ,
-  input logic rst_ni,
+  input logic clk_p ,
+  input logic rst_n,
 
   input logic               clr_i,
   input logic               wvalid_i,
@@ -77,8 +78,8 @@ module prim_packer_fifo #(
   logic [MaxW-1:0] data_q, data_d;
   logic            clr_q, clr_d;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : seq
+    if (!rst_n) begin
       depth_q <= '0;
       data_q  <= '0;
       clr_q   <= 1'b1;
@@ -95,23 +96,28 @@ module prim_packer_fifo #(
   assign depth_o = depth_q;
 
   if (InW < OutW) begin : gen_pack_mode
-    logic [MaxW-1:0] wdata_shifted;
+    logic [MaxW-1:0] wdata_shifted, wdata_unshifted;
 
+    assign wdata_unshifted = {{OutW - InW{1'b0}}, wdata_i};
     assign wdata_shifted = {{OutW - InW{1'b0}}, wdata_i} << (depth_q*InW);
     assign clear_status = (rready_i && rvalid_o) || clr_q;
     assign clear_data = (ClearOnRead && clear_status) || clr_q;
     assign load_data = wvalid_i && wready_o;
 
-    assign depth_d =  clear_status ? '0 :
+    assign depth_d =  
+           clear_status & load_data & LookAheadWithoutBubble ? 'b1:
+           clear_status ? '0 :
            load_data ? depth_q+1 :
            depth_q;
 
-    assign data_d = clear_data ? '0 :
+    assign data_d = 
+           clear_status & load_data & LookAheadWithoutBubble ? wdata_unshifted : 
            load_data ? (wdata_shifted | (depth_q == 0 ? '0 : data_q)) :
+           clear_data ? '0 :
            data_q;
 
     // set outputs
-    assign wready_o = !(depth_q == FullDepth) && !clr_q;
+    assign wready_o = ((!(depth_q == FullDepth)) || (LookAheadWithoutBubble & clear_status)) && !clr_q;
     assign rdata_o =  data_q;
     assign rvalid_o = (depth_q == FullDepth) && !clr_q;
 
@@ -122,8 +128,8 @@ module prim_packer_fifo #(
     logic [DepthW:0] lsb_is_one;
     logic [DepthW:0] max_value;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : seq_ptr
+      if (!rst_n) begin
         ptr_q   <= '0;
       end else begin
         ptr_q   <= ptr_d;
@@ -132,29 +138,35 @@ module prim_packer_fifo #(
 
     assign lsb_is_one = {{DepthW{1'b0}},1'b1};
     assign max_value = FullDepth;
-    assign rdata_shifted = data_q >> ptr_q*OutW;
+    assign rdata_shifted = data_q >> (ptr_q*OutW);
     assign clear_status = (rready_i && (depth_q == lsb_is_one)) || clr_q;
     assign clear_data = (ClearOnRead && clear_status) || clr_q;
     assign load_data = wvalid_i && wready_o;
     assign pull_data = rvalid_o && rready_i;
 
-    assign depth_d =  clear_status ? '0 :
+    assign depth_d =  
+           LookAheadWithoutBubble & clear_status & load_data ? max_value :
+           clear_status ? '0 :
            load_data ? max_value :
            pull_data ? depth_q-1 :
            depth_q;
 
-    assign ptr_d =  clear_status ? '0 :
-           pull_data ? ptr_q+1 :
+    assign ptr_d =  
+           LookAheadWithoutBubble & clear_status & load_data ? 'b1 :
+           clear_status ? '0 :
+           pull_data ? (DepthW)'(ptr_q+1) :
            ptr_q;
 
-    assign data_d = clear_data ? '0 :
+    assign data_d = 
+           LookAheadWithoutBubble & clear_status & load_data ? wdata_i : 
+           clear_data ? '0 :
            load_data ? wdata_i :
            data_q;
 
     // set outputs
-    assign wready_o = (depth_q == '0) && !clr_q;
+    assign wready_o = ((depth_q == '0) || (LookAheadWithoutBubble & clear_status)) && !clr_q;
     assign rdata_o =  rdata_shifted[OutW-1:0];
-    assign rvalid_o = !(depth_q == '0) && !clr_q;
+    assign rvalid_o = ((!(depth_q == '0))||(LookAheadWithoutBubble & clear_status & load_data)) && !clr_q;
 
     // Avoid possible lint errors in case InW > OutW.
     if (InW > OutW) begin : gen_unused
@@ -169,11 +181,11 @@ module prim_packer_fifo #(
   //////////////////////////////////////////////
 
   // If not acked, valid_o should keep asserting
-  `ASSERT(ValidOPairedWithReadyI_A,
+  `JH_ASSERT(ValidOPairedWithReadyI_A,
           rvalid_o && !rready_i && !clr_i |=> rvalid_o)
 
   // If output port doesn't accept the data, the data should be stable
-  `ASSERT(DataOStableWhenPending_A,
+  `JH_ASSERT(DataOStableWhenPending_A,
           ##1 rvalid_o && $past(rvalid_o)
           && !$past(rready_i) && !$past(clr_i) |-> $stable(rdata_o))
 
