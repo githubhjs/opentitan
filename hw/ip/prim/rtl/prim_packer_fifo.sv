@@ -152,7 +152,7 @@ module jh_prim_packer_fifo #(
            depth_q;
 
     assign ptr_d =  
-           LookAheadWithoutBubble & clear_status & load_data ? 'b1 :
+           LookAheadWithoutBubble & clear_status & load_data ? '0 :
            clear_status ? '0 :
            pull_data ? (DepthW)'(ptr_q+1) :
            ptr_q;
