@@ -56,6 +56,7 @@ module prim_generic_ram_2p import prim_ram_2p_pkg::*; #(
   logic [MaskWidth-1:0] a_wmask;
   logic [MaskWidth-1:0] b_wmask;
 
+  if (1) begin : gen_if_wmask
   for (genvar k = 0; k < MaskWidth; k++) begin : gen_wmask
     assign a_wmask[k] = &a_wmask_i[k*DataBitsPerMask +: DataBitsPerMask];
     assign b_wmask[k] = &b_wmask_i[k*DataBitsPerMask +: DataBitsPerMask];
@@ -67,12 +68,12 @@ module prim_generic_ram_2p import prim_ram_2p_pkg::*; #(
     `ASSERT(MaskCheckPortB_A, b_req_i && b_write_i |->
         b_wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
         clk_b_i, '0)
-  end
+  end end
 
   // Xilinx FPGA specific Dual-port RAM coding style
   // using always instead of always_ff to avoid 'ICPD  - illegal combination of drivers' error
   // thrown due to 'mem' being driven by two always processes below
-  always @(posedge clk_a_i) begin
+  always @(posedge clk_a_i) begin : seq_a_data
     if (a_req_i) begin
       if (a_write_i) begin
         for (int i=0; i < MaskWidth; i = i + 1) begin
@@ -87,7 +88,7 @@ module prim_generic_ram_2p import prim_ram_2p_pkg::*; #(
     end
   end
 
-  always @(posedge clk_b_i) begin
+  always @(posedge clk_b_i) begin : seq_b_data
     if (b_req_i) begin
       if (b_write_i) begin
         for (int i=0; i < MaskWidth; i = i + 1) begin
