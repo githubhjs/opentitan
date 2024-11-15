@@ -48,6 +48,7 @@ module prim_generic_ram_1p import prim_ram_1p_pkg::*; #(
   logic [Width-1:0]     mem [Depth];
   logic [MaskWidth-1:0] wmask;
 
+  if (1) begin : gen_if_wmask
   for (genvar k = 0; k < MaskWidth; k++) begin : gen_wmask
     assign wmask[k] = &wmask_i[k*DataBitsPerMask +: DataBitsPerMask];
 
@@ -55,11 +56,11 @@ module prim_generic_ram_1p import prim_ram_1p_pkg::*; #(
     `ASSERT(MaskCheck_A, req_i && write_i |->
         wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
         clk_i, '0)
-  end
+  end end
 
   // using always instead of always_ff to avoid 'ICPD  - illegal combination of drivers' error
   // thrown when using $readmemh system task to backdoor load an image
-  always @(posedge clk_i) begin
+  always @(posedge clk_i) begin : seq_data
     if (req_i) begin
       if (write_i) begin
         for (int i=0; i < MaskWidth; i = i + 1) begin
