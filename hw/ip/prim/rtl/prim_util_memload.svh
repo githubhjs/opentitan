@@ -48,6 +48,14 @@
     return 1;
   endfunction
 
+  // Function for zeroing sram.
+  export "DPI-C" function simutil_zero_mem;
+
+  function int simutil_zero_mem();
+    mem = '{default:'0};
+    return 0;
+  endfunction
+
   // Function for getting a specific element in |mem|
   export "DPI-C" function simutil_get_mem;
 
