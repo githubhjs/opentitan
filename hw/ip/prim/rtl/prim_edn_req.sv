@@ -11,10 +11,10 @@
 // requests.
 //
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_edn_req
-  import prim_alert_pkg::*;
+module jh_prim_edn_req
+  import jh_prim_alert_pkg::*;
 #(
   parameter int OutWidth = 32,
   // Repetition check for incoming edn data
@@ -31,8 +31,8 @@ module prim_edn_req
   parameter int unsigned MaxLatency = 0
 ) (
   // Design side
-  input                       clk_i,
-  input                       rst_ni,
+  input                       clk_p,
+  input                       rst_n,
   input                       req_chk_i, // Used for gating assertions. Drive to 1 during normal
                                          // operation.
   input                       req_i,
@@ -54,13 +54,13 @@ module prim_edn_req
   logic [edn_pkg::ENDPOINT_BUS_WIDTH-1:0] word_data;
   logic word_fips;
   localparam int SyncWidth = $bits({edn_i.edn_fips, edn_i.edn_bus});
-  prim_sync_reqack_data #(
+  jh_prim_sync_reqack_data #(
     .Width(SyncWidth),
     .DataSrc2Dst(1'b0),
     .DataReg(1'b0)
   ) u_prim_sync_reqack_data (
-    .clk_src_i  ( clk_i                           ),
-    .rst_src_ni ( rst_ni                          ),
+    .clk_src_i  ( clk_p                           ),
+    .rst_src_ni ( rst_n                          ),
     .clk_dst_i  ( clk_edn_i                       ),
     .rst_dst_ni ( rst_edn_ni                      ),
     .req_chk_i  ( req_chk_i                       ),
@@ -74,7 +74,7 @@ module prim_edn_req
 
   if (RepCheck) begin : gen_rep_chk
     logic [edn_pkg::ENDPOINT_BUS_WIDTH-1:0] word_data_q;
-    always_ff @(posedge clk_i) begin
+    always_ff @(posedge clk_p) begin
       if (word_ack) begin
         word_data_q <= word_data;
       end
@@ -82,8 +82,8 @@ module prim_edn_req
 
     // do not check until we have received at least the first entry
     logic chk_rep;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         chk_rep <= '0;
       end else if (word_ack) begin
         chk_rep <= 1'b1;
@@ -96,8 +96,8 @@ module prim_edn_req
     assign err_d = (req_i && ack_o)                                  ? 1'b0 : // clear
                    (chk_rep && word_ack && word_data == word_data_q) ? 1'b1 : // set
                                                                        err_q; // keep
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         err_q <= 1'b0;
       end else begin
         err_q <= err_d;
@@ -109,13 +109,13 @@ module prim_edn_req
     assign err_o = '0;
   end
 
-  prim_packer_fifo #(
+  jh_prim_packer_fifo #(
     .InW(edn_pkg::ENDPOINT_BUS_WIDTH),
     .OutW(OutWidth),
     .ClearOnRead(1'b0)
   ) u_prim_packer_fifo (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .clr_i    ( 1'b0          ), // not needed
     .wvalid_i ( word_ack      ),
     .wdata_i  ( word_data     ),
@@ -136,8 +136,8 @@ module prim_edn_req
   assign fips_d = (req_i && ack_o) ? 1'b1               : // clear
                   (word_ack)       ? fips_q & word_fips : // accumulate
                                      fips_q;              // keep
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       fips_q <= 1'b1;
     end else begin
       fips_q <= fips_d;
@@ -157,8 +157,8 @@ module prim_edn_req
     logic reset_counter;
     logic enable_counter;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) latency_counter <= '0;
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) latency_counter <= '0;
       else if (reset_counter) latency_counter <= '0;
       else if (enable_counter) latency_counter <= latency_counter + 1'b1;
     end
@@ -166,7 +166,7 @@ module prim_edn_req
     assign reset_counter  = ack_o;
     assign enable_counter = req_i;
 
-    `ASSERT(MaxLatency_A, latency_counter <= MaxLatency)
+    `JH_ASSERT(MaxLatency_A, latency_counter <= MaxLatency)
 
     // TODO: Is it worth to check req & ack pair?
     //         _________________________________
@@ -182,4 +182,4 @@ module prim_edn_req
   assign unused_param_maxlatency = ^MaxLatency;
 `endif // SYNTHESIS
 
-endmodule : prim_edn_req
+endmodule : jh_prim_edn_req

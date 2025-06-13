@@ -10,10 +10,10 @@
 // Multibit sender module. This module is instantiates a hand-picked flop cell for each bit in the
 // multibit signal such that tools do not optimize the multibit encoding.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_mubi8_sender
-  import prim_mubi_pkg::*;
+module jh_prim_mubi8_sender
+  import jh_prim_mubi_pkg::*;
 #(
   // This flops the output if set to 1.
   // In special cases where the sender is in the same clock domain as the receiver,
@@ -24,8 +24,8 @@ module prim_mubi8_sender
   // Reset value for the sender flops
   parameter mubi8_t ResetValue = MuBi8False
 ) (
-  input          clk_i,
-  input          rst_ni,
+  input          clk_p,
+  input          rst_n,
   input  mubi8_t mubi_i,
   output mubi8_t mubi_o
 );
@@ -35,12 +35,12 @@ module prim_mubi8_sender
 
   // first generation block decides whether a flop should be present
   if (AsyncOn) begin : gen_flops
-    prim_flop #(
+    jh_prim_flop #(
       .Width(MuBi8Width),
       .ResetValue(MuBi8Width'(ResetValue))
     ) u_prim_flop (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i   ( mubi     ),
       .q_o   ( mubi_int )
     );
@@ -51,8 +51,8 @@ module prim_mubi8_sender
     // for modules where clock and reset are used for assertions only
     // This logic will be removed for sythesis since it is unloaded.
     mubi8_t unused_logic;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
          unused_logic <= MuBi8False;
       end else begin
          unused_logic <= mubi_i;
@@ -65,14 +65,14 @@ module prim_mubi8_sender
   // 2. If not EnSecBuf and not AsyncOn -> use normal buffer
   // 3. If not EnSecBuf and AsyncOn -> feed through
   if (EnSecBuf) begin : gen_sec_buf
-    prim_sec_anchor_buf #(
+    jh_prim_sec_anchor_buf #(
       .Width(8)
     ) u_prim_sec_buf (
       .in_i(mubi_int),
       .out_o(mubi_out)
     );
   end else if (!AsyncOn) begin : gen_prim_buf
-    prim_buf #(
+    jh_prim_buf #(
       .Width(8)
     ) u_prim_buf (
       .in_i(mubi_int),
@@ -89,6 +89,6 @@ module prim_mubi8_sender
   ////////////////
 
   // The outputs should be known at all times.
-  `ASSERT_KNOWN(OutputsKnown_A, mubi_o)
+  `JH_ASSERT_KNOWN(OutputsKnown_A, mubi_o)
 
-endmodule : prim_mubi8_sender
+endmodule : jh_prim_mubi8_sender

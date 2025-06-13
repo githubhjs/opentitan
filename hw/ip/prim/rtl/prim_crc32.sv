@@ -13,11 +13,11 @@
 // CRC of 0xffffffff) must be used to match results generated elsewhere.
 
 
-module prim_crc32 #(
+module jh_prim_crc32 #(
   parameter int unsigned BytesPerWord = 4
 ) (
-  input  logic                      clk_i,
-  input  logic                      rst_ni,
+  input  logic                      clk_p,
+  input  logic                      rst_n,
 
   input  logic                      set_crc_i,
   input  logic [31:0]               crc_in_i,
@@ -27,7 +27,7 @@ module prim_crc32 #(
 
   output logic [31:0]               crc_out_o
 );
-  // Generated using hw/ip/prim/util/prim_crc32_table_gen.py
+  // Generated using hw/ip/prim/util/jh_prim_crc32_table_gen.py
   function automatic logic [31:0] crc32_byte_calc(logic [7:0] b);
     unique case (b)
       8'hff:   crc32_byte_calc = 32'h2d02ef8d;
@@ -312,8 +312,8 @@ module prim_crc32 #(
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       crc_q <= 32'hFFFFFFFF;
     end else if (crc_en) begin
       crc_q <= crc_d;

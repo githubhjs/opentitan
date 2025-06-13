@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Based on prim_max_tree, this module implements an explicit binary tree to find the
+// Based on jh_prim_max_tree, this module implements an explicit binary tree to find the
 // sum of this inputs. The solution has O(N) area and O(log(N)) delay complexity, and
 // thus scales well with many input sources.
 //
@@ -10,15 +10,15 @@
 // Invalid values are treated as 0.
 //
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_sum_tree #(
+module jh_prim_sum_tree #(
   parameter int NumSrc = 32,
   parameter int Width = 8
 ) (
   // The module is combinational - the clock and reset are only used for assertions.
-  input                         clk_i,
-  input                         rst_ni,
+  input                         clk_p,
+  input                         rst_n,
   input [NumSrc-1:0][Width-1:0] values_i,    // Input values
   input [NumSrc-1:0]            valid_i,     // Input valid bits
   output logic [Width-1:0]      sum_value_o, // Summation result
@@ -30,7 +30,7 @@ module prim_sum_tree #(
   ///////////////////////
 
   // This only works with 2 or more sources.
-  `ASSERT_INIT(NumSources_A, NumSrc >= 2)
+  `JH_ASSERT_INIT(NumSources_A, NumSrc >= 2)
 
   // Align to powers of 2 for simplicity.
   // A full binary tree with N levels has 2**N + 2**N-1 nodes.
@@ -111,9 +111,9 @@ module prim_sum_tree #(
   logic [Width-1:0] sum_value_exp;
   assign sum_value_exp = sum_value(values_i, valid_i);
 
-  `ASSERT(ValidInImpliesValidOut_A, |valid_i === sum_valid_o)
-  `ASSERT(SumComputation_A, sum_valid_o |-> sum_value_o == sum_value_exp)
-  `ASSERT(SumComputationInvalid_A, !sum_valid_o |-> sum_value_o == '0)
+  `JH_ASSERT(ValidInImpliesValidOut_A, |valid_i === sum_valid_o)
+  `JH_ASSERT(SumComputation_A, sum_valid_o |-> sum_value_o == sum_value_exp)
+  `JH_ASSERT(SumComputationInvalid_A, !sum_valid_o |-> sum_value_o == '0)
 `endif
 
-endmodule : prim_sum_tree
+endmodule : jh_prim_sum_tree

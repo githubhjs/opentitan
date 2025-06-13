@@ -8,9 +8,9 @@
 // Should be used exactly as recommended in the life cycle controller spec:
 // https://docs.opentitan.org/hw/ip/lc_ctrl/doc/index.html#control-signal-propagation
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_lc_sync #(
+module jh_prim_lc_sync #(
   // Number of separately buffered output signals.
   // The buffer cells have a don't touch constraint
   // on them such that synthesis tools won't collapse
@@ -24,8 +24,8 @@ module prim_lc_sync #(
   // 1: reset value is lc_ctrl_pkg::On
   parameter bit ResetValueIsOn = 0
 ) (
-  input                                       clk_i,
-  input                                       rst_ni,
+  input                                       clk_p,
+  input                                       rst_n,
   input  lc_ctrl_pkg::lc_tx_t                 lc_en_i,
   output lc_ctrl_pkg::lc_tx_t [NumCopies-1:0] lc_en_o
 );
@@ -33,16 +33,16 @@ module prim_lc_sync #(
   localparam lc_ctrl_pkg::lc_tx_t LcResetValue = (ResetValueIsOn) ? lc_ctrl_pkg::On :
                                                                   lc_ctrl_pkg::Off;
 
-  `ASSERT_INIT(NumCopiesMustBeGreaterZero_A, NumCopies > 0)
+  `JH_ASSERT_INIT(NumCopiesMustBeGreaterZero_A, NumCopies > 0)
 
   logic [lc_ctrl_pkg::TxWidth-1:0] lc_en;
   if (AsyncOn) begin : gen_flops
-    prim_flop_2sync #(
+    jh_prim_flop_2sync #(
       .Width(lc_ctrl_pkg::TxWidth),
       .ResetValue(lc_ctrl_pkg::TxWidth'(LcResetValue))
     ) u_prim_flop_2sync (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i(lc_en_i),
       .q_o(lc_en)
     );
@@ -52,8 +52,8 @@ module prim_lc_sync #(
     // or nothing at all.
     // This logic will be removed for sythesis since it is unloaded.
     lc_ctrl_pkg::lc_tx_t unused_logic;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
          unused_logic <= lc_ctrl_pkg::Off;
       end else begin
          unused_logic <= lc_en_i;
@@ -66,7 +66,7 @@ module prim_lc_sync #(
   for (genvar j = 0; j < NumCopies; j++) begin : gen_buffs
     logic [lc_ctrl_pkg::TxWidth-1:0] lc_en_out;
     for (genvar k = 0; k < lc_ctrl_pkg::TxWidth; k++) begin : gen_bits
-      prim_sec_anchor_buf u_prim_buf (
+      jh_prim_sec_anchor_buf u_prim_buf (
         .in_i(lc_en[k]),
         .out_o(lc_en_out[k])
       );
@@ -79,29 +79,29 @@ module prim_lc_sync #(
   ////////////////
 
   // The outputs should be known at all times.
-  `ASSERT_KNOWN(OutputsKnown_A, lc_en_o)
+  `JH_ASSERT_KNOWN(OutputsKnown_A, lc_en_o)
 
   // If the multibit signal is in a transient state, we expect it
   // to be stable again within one clock cycle.
   // DV will exclude these three assertions by name, thus added a module name prefix to make it
   // harder to accidentally replicate in other modules.
-  `ASSERT(PrimLcSyncCheckTransients_A,
+  `JH_ASSERT(PrimLcSyncCheckTransients_A,
       !(lc_en_i inside {lc_ctrl_pkg::On, lc_ctrl_pkg::Off})
       |=>
       (lc_en_i inside {lc_ctrl_pkg::On, lc_ctrl_pkg::Off}))
 
   // If a signal departs from passive state, we expect it to move to the active state
   // with only one transient cycle in between.
-  `ASSERT(PrimLcSyncCheckTransients0_A,
+  `JH_ASSERT(PrimLcSyncCheckTransients0_A,
       $past(lc_en_i == lc_ctrl_pkg::Off) &&
       !(lc_en_i inside {lc_ctrl_pkg::On, lc_ctrl_pkg::Off})
       |=>
       (lc_en_i == lc_ctrl_pkg::On))
 
-  `ASSERT(PrimLcSyncCheckTransients1_A,
+  `JH_ASSERT(PrimLcSyncCheckTransients1_A,
       $past(lc_en_i == lc_ctrl_pkg::On) &&
       !(lc_en_i inside {lc_ctrl_pkg::On, lc_ctrl_pkg::Off})
       |=>
       (lc_en_i == lc_ctrl_pkg::Off))
 
-endmodule : prim_lc_sync
+endmodule : jh_prim_lc_sync

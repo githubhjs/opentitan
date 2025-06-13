@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // This module decodes escalation enable pulses that have been encoded using
-// the prim_esc_sender module.
+// the jh_prim_esc_sender module.
 //
 // The module supports in-band ping testing of the escalation
 // wires. This is accomplished by the sender module that places a single-cycle,
@@ -14,12 +14,12 @@
 // Native escalation enable pulses are differentiated from ping
 // requests by making sure that these pulses are always longer than 1 cycle.
 //
-// See also: prim_esc_sender, prim_diff_decode, alert_handler
+// See also: jh_prim_esc_sender, jh_prim_diff_decode, alert_handler
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_esc_receiver
-  import prim_esc_pkg::*;
+module jh_prim_esc_receiver
+  import jh_prim_esc_pkg::*;
 #(
   // The number of escalation severities. Should be set to the Alert Handler's N_ESC_SEV when this
   // primitive is instantiated.
@@ -46,8 +46,8 @@ module prim_esc_receiver
                                $clog2(NumTimeoutCounts) +
                                PING_CNT_DW
 ) (
-  input           clk_i,
-  input           rst_ni,
+  input           clk_p,
+  input           rst_n,
   // escalation enable
   output logic    esc_req_o,
   // escalation / ping response
@@ -63,7 +63,7 @@ module prim_esc_receiver
   logic esc_level, esc_p, esc_n, sigint_detected;
 
   // This prevents further tool optimizations of the differential signal.
-  prim_buf #(
+  jh_prim_buf #(
     .Width(2)
   ) u_prim_buf_esc (
     .in_i({esc_tx_i.esc_n,
@@ -72,11 +72,11 @@ module prim_esc_receiver
             esc_p})
   );
 
-  prim_diff_decode #(
+  jh_prim_diff_decode #(
     .AsyncOn(1'b0)
   ) u_decode_esc (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .diff_pi  ( esc_p           ),
     .diff_ni  ( esc_n           ),
     .level_o  ( esc_level       ),
@@ -99,14 +99,14 @@ module prim_esc_receiver
   assign timeout_cnt_set = (ping_en && !(&timeout_cnt));
   assign timeout_cnt_en = ((timeout_cnt > '0) && !(&timeout_cnt));
 
-  prim_count #(
+  jh_prim_count #(
     .Width(TimeoutCntDw),
     // The escalation receiver behaves differently than other comportable IP. I.e., instead of
     // sending out an alert signal, this condition is handled internally in the alert handler.
     .EnableAlertTriggerSVA(0)
   ) u_prim_count (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .clr_i(1'b0),
     .set_i(timeout_cnt_set),
     .set_cnt_i(TimeoutCntDw'(1)),
@@ -123,7 +123,7 @@ module prim_esc_receiver
   // - the ping monitor timeout is reached,
   // - the two ping monitor counters are in an inconsistent state.
   logic esc_req;
-  prim_sec_anchor_buf #(
+  jh_prim_sec_anchor_buf #(
     .Width(1)
   ) u_prim_buf_esc_req (
     .in_i(esc_req || (&timeout_cnt) || timeout_cnt_error),
@@ -140,12 +140,12 @@ module prim_esc_receiver
   logic resp_nd, resp_nq;
 
   // This prevents further tool optimizations of the differential signal.
-  prim_sec_anchor_flop #(
+  jh_prim_sec_anchor_flop #(
     .Width(2),
     .ResetValue(2'b10)
   ) u_prim_flop_esc (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i({resp_nd, resp_pd}),
     .q_o({resp_nq, resp_pq})
   );
@@ -234,8 +234,8 @@ module prim_esc_receiver
   // Registers //
   ///////////////
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_regs
+    if (!rst_n) begin
       state_q <= Idle;
     end else begin
       state_q <= state_d;
@@ -247,31 +247,31 @@ module prim_esc_receiver
   ////////////////
 
   // check whether all outputs have a good known state after reset
-  `ASSERT_KNOWN(EscEnKnownO_A, esc_req_o)
-  `ASSERT_KNOWN(RespPKnownO_A, esc_rx_o)
+  `JH_ASSERT_KNOWN(EscEnKnownO_A, esc_req_o)
+  `JH_ASSERT_KNOWN(RespPKnownO_A, esc_rx_o)
 
-  `ASSERT(SigIntCheck0_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=>
+  `JH_ASSERT(SigIntCheck0_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=>
       esc_rx_o.resp_p == esc_rx_o.resp_n)
-  `ASSERT(SigIntCheck1_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=> state_q == SigInt)
+  `JH_ASSERT(SigIntCheck1_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=> state_q == SigInt)
   // auto-escalate in case of signal integrity issue
-  `ASSERT(SigIntCheck2_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=> esc_req_o)
+  `JH_ASSERT(SigIntCheck2_A, esc_tx_i.esc_p == esc_tx_i.esc_n |=> esc_req_o)
   // correct diff encoding
-  `ASSERT(DiffEncCheck_A, esc_tx_i.esc_p ^ esc_tx_i.esc_n |=>
+  `JH_ASSERT(DiffEncCheck_A, esc_tx_i.esc_p ^ esc_tx_i.esc_n |=>
       esc_rx_o.resp_p ^ esc_rx_o.resp_n)
   // disable in case of signal integrity issue
-  `ASSERT(PingRespCheck_A, state_q == Idle ##1 $rose(esc_tx_i.esc_p) ##1 $fell(esc_tx_i.esc_p) |->
+  `JH_ASSERT(PingRespCheck_A, state_q == Idle ##1 $rose(esc_tx_i.esc_p) ##1 $fell(esc_tx_i.esc_p) |->
       $rose(esc_rx_o.resp_p) ##1 $fell(esc_rx_o.resp_p),
-      clk_i, !rst_ni || (esc_tx_i.esc_p == esc_tx_i.esc_n))
+      clk_p, !rst_n || (esc_tx_i.esc_p == esc_tx_i.esc_n))
   // escalation response needs to continuously toggle
-  `ASSERT(EscRespCheck_A, esc_tx_i.esc_p && $past(esc_tx_i.esc_p) &&
+  `JH_ASSERT(EscRespCheck_A, esc_tx_i.esc_p && $past(esc_tx_i.esc_p) &&
       (esc_tx_i.esc_p ^ esc_tx_i.esc_n) && $past(esc_tx_i.esc_p ^ esc_tx_i.esc_n)
       |=> esc_rx_o.resp_p != $past(esc_rx_o.resp_p))
   // detect escalation pulse
-  `ASSERT(EscEnCheck_A, esc_tx_i.esc_p && (esc_tx_i.esc_p ^ esc_tx_i.esc_n) && state_q != SigInt
+  `JH_ASSERT(EscEnCheck_A, esc_tx_i.esc_p && (esc_tx_i.esc_p ^ esc_tx_i.esc_n) && state_q != SigInt
       ##1 esc_tx_i.esc_p && (esc_tx_i.esc_p ^ esc_tx_i.esc_n) |-> esc_req_o)
   // make sure the counter does not wrap around
-  `ASSERT(EscCntWrap_A, &timeout_cnt |=> timeout_cnt != 0)
+  `JH_ASSERT(EscCntWrap_A, &timeout_cnt |=> timeout_cnt != 0)
   // if the counter expires, escalation should be asserted
-  `ASSERT(EscCntEsc_A, &timeout_cnt |-> esc_req_o)
+  `JH_ASSERT(EscCntEsc_A, &timeout_cnt |-> esc_req_o)
 
-endmodule : prim_esc_receiver
+endmodule : jh_prim_esc_receiver

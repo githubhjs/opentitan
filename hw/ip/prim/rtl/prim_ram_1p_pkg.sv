@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package prim_ram_1p_pkg;
+package jh_prim_ram_1p_pkg;
 
   typedef struct packed {
     logic       cfg_en;
@@ -17,4 +17,4 @@ package prim_ram_1p_pkg;
 
   parameter ram_1p_cfg_t RAM_1P_CFG_DEFAULT = '0;
 
-endpackage // prim_ram_1p_pkg
+endpackage // jh_prim_ram_1p_pkg

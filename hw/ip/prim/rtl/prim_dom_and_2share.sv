@@ -23,14 +23,14 @@
 // Q1 = t{1,1} + sig(j>1,1)(...) + sig(j<1,1)(t{1,j} + Z{j})
 //    = a1&b1  + (0              + a1&b0 + z0)
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_dom_and_2share #(
+module jh_prim_dom_and_2share #(
   parameter int DW = 64, // Input width
   parameter bit Pipeline = 1'b0 // Enable full pipelining
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input [DW-1:0] a0_i, // share0 of a
   input [DW-1:0] a1_i, // share1 of a
@@ -66,7 +66,7 @@ module prim_dom_and_2share #(
   // Resharing of cross-domain terms
 
   // Preserve the logic sequence for XOR not to proceed cross-domain AND.
-  prim_xor2 #(
+  jh_prim_xor2 #(
     .Width ( DW*2 )
   ) u_prim_xor_t01 (
     .in0_i ( {t_a0b1, t_a1b0} ),
@@ -75,12 +75,12 @@ module prim_dom_and_2share #(
   );
 
   // Register stage
-  prim_flop_en #(
+  jh_prim_flop_en #(
     .Width      ( DW*2 ),
     .ResetValue ( '0   )
   ) u_prim_flop_t01 (
-    .clk_i  ( clk_i        ),
-    .rst_ni ( rst_ni       ),
+    .clk_p  ( clk_p        ),
+    .rst_n ( rst_n       ),
     .en_i   ( z_valid_i    ),
     .d_i    ( {t0_d, t1_d} ),
     .q_o    ( {t0_q, t1_q} )
@@ -96,12 +96,12 @@ module prim_dom_and_2share #(
     // reshared cross-domain terms with inner-domain terms derived from different input data.
 
     logic [DW-1:0] t_a0b0_q, t_a1b1_q;
-    prim_flop_en #(
+    jh_prim_flop_en #(
       .Width      ( DW*2 ),
       .ResetValue ( '0   )
     ) u_prim_flop_tab01 (
-      .clk_i  ( clk_i                ),
-      .rst_ni ( rst_ni               ),
+      .clk_p  ( clk_p                ),
+      .rst_n ( rst_n               ),
       .en_i   ( z_valid_i            ),
       .d_i    ( {t_a0b0_d, t_a1b1_d} ),
       .q_o    ( {t_a0b0_q, t_a1b1_q} )
@@ -125,7 +125,7 @@ module prim_dom_and_2share #(
   /////////////////
 
   // Preserve the logic sequence for XOR not to proceed the inner-domain AND.
-  prim_xor2 #(
+  jh_prim_xor2 #(
     .Width ( DW*2 )
   ) u_prim_xor_q01 (
     .in0_i ( {t_a0b0, t_a1b1} ),
@@ -150,24 +150,24 @@ module prim_dom_and_2share #(
 
   // To speed up the FPV process, random value is ready in less than or
   // equal to two cycles.
-  `ASSUME_FPV(RandomReadyInShortTime_A,
+  `JH_ASSUME_FPV(RandomReadyInShortTime_A,
     $changed(a0_i) || $changed(a1_i) || $changed(b0_i) || $changed(b1_i)
       |-> ##[0:2] z_valid_i,
-    clk_i, !rst_ni)
+    clk_p, !rst_n)
 
   if (Pipeline == 0) begin: g_assert_stable
     // If Pipeline is not set, the computation takes two cycles without flop
     // crossing the domain. In this case, the signal should be stable for at
     // least two cycles.
-    `ASSUME(StableTwoCycles_M,
+    `JH_ASSUME(StableTwoCycles_M,
       ($changed(a0_i)  || $changed(a1_i) || $changed(b0_i) || $changed(b1_i))
         ##[0:$] z_valid_i |=>
         $stable(a0_i) && $stable(a1_i) && $stable(b0_i) && $stable(b1_i))
   end
 
-  `ASSERT(UnmaskedAndMatched_A,
+  `JH_ASSERT(UnmaskedAndMatched_A,
     z_valid_i |=> (q0_o ^ q1_o) ==
       (($past(a0_i) ^ $past(a1_i)) & ($past(b0_i) ^ $past(b1_i))),
-    clk_i, !rst_ni)
+    clk_p, !rst_n)
 
 endmodule

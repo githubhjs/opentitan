@@ -5,15 +5,15 @@
 // One-hot mux
 // A AND/OR mux with a one-hot select input.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_onehot_mux #(
+module jh_prim_onehot_mux #(
   parameter int Width  = 32,
   parameter int Inputs = 8
 ) (
   // Clock and reset only for assertions
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input  logic [Width-1:0]  in_i [Inputs],
   input  logic [Inputs-1:0] sel_i, // Must be one-hot or zero
@@ -28,7 +28,7 @@ module prim_onehot_mux #(
       assign in_mux[b][i] = in_i[i][b];
     end
 
-    prim_and2 #(.Width(Inputs)) u_mux_bit_and(
+    jh_prim_and2 #(.Width(Inputs)) u_mux_bit_and(
       .in0_i(in_mux[b]),
       .in1_i(sel_i),
       .out_o(out_mux_bits)
@@ -41,8 +41,8 @@ module prim_onehot_mux #(
   logic unused_rst_n;
 
   // clock and reset only needed for assertion
-  assign unused_clk   = clk_i;
-  assign unused_rst_n = rst_ni;
+  assign unused_clk   = clk_p;
+  assign unused_rst_n = rst_n;
 
-  `ASSERT(SelIsOnehot_A, $onehot0(sel_i))
+  `JH_ASSERT(SelIsOnehot_A, $onehot0(sel_i))
 endmodule

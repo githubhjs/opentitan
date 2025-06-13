@@ -6,8 +6,8 @@
 // The state vector of both LFSRs is constantly checked and an error is asserted if the
 // two states are inconsistent.
 
-module prim_double_lfsr #(
-  // prim_lfsr parameters - refer to prim_lfsr for their meaning/
+module jh_prim_double_lfsr #(
+  // jh_prim_lfsr parameters - refer to jh_prim_lfsr for their meaning/
   parameter                    LfsrType     = "GAL_XOR",
   parameter int unsigned       LfsrDw       = 32,
   localparam int unsigned      LfsrIdxDw    = $clog2(LfsrDw),
@@ -25,8 +25,8 @@ module prim_double_lfsr #(
   // in non-comportable IPs where an error does not trigger an alert.
   parameter bit                EnableAlertTriggerSVA = 1
 ) (
-  input                         clk_i,
-  input                         rst_ni,
+  input                         clk_p,
+  input                         rst_n,
   input                         seed_en_i,
   input        [LfsrDw-1:0]     seed_i,
   input                         lfsr_en_i,
@@ -45,14 +45,14 @@ module prim_double_lfsr #(
     logic lfsr_en_buf, seed_en_buf;
     logic [EntropyDw-1:0] entropy_buf;
     logic [LfsrDw-1:0] seed_buf, lfsr_state_unbuf;
-    prim_buf #(
+    jh_prim_buf #(
       .Width(EntropyDw + LfsrDw + 2)
     ) u_prim_buf_input (
       .in_i({seed_en_i, seed_i, lfsr_en_i, entropy_i}),
       .out_o({seed_en_buf, seed_buf, lfsr_en_buf, entropy_buf})
     );
 
-    prim_lfsr #(
+    jh_prim_lfsr #(
       .LfsrType(LfsrType),
       .LfsrDw(LfsrDw),
       .EntropyDw(EntropyDw),
@@ -67,8 +67,8 @@ module prim_double_lfsr #(
       .ExtSeedSVA(ExtSeedSVA),
       .NonLinearOut(NonLinearOut)
     ) u_prim_lfsr (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .seed_en_i  ( seed_en_buf      ),
       .seed_i     ( seed_buf         ),
       .lfsr_en_i  ( lfsr_en_buf      ),
@@ -76,7 +76,7 @@ module prim_double_lfsr #(
       .state_o    ( lfsr_state_unbuf )
     );
 
-    prim_buf #(
+    jh_prim_buf #(
       .Width(LfsrDw)
     ) u_prim_buf_output (
       .in_i(lfsr_state_unbuf),
@@ -90,10 +90,10 @@ module prim_double_lfsr #(
 
   // This logic that will be assign to one, when user adds macro
   // ASSERT_PRIM_DOUBLE_LFSR_ERROR_TRIGGER_ALERT to check the error with alert, in case that
-  // prim_double_lfsr is used in design without adding this assertion check.
+  // jh_prim_double_lfsr is used in design without adding this assertion check.
   `ifdef INC_ASSERT
   logic unused_assert_connected;
 
-  `ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
+  `JH_ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
   `endif
-endmodule : prim_double_lfsr
+endmodule : jh_prim_double_lfsr

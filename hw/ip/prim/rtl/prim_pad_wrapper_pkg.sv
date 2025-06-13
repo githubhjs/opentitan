@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-package prim_pad_wrapper_pkg;
+package jh_prim_pad_wrapper_pkg;
 
   typedef enum logic [2:0] {
     BidirStd = 3'h0,     // Standard bidirectional pad
@@ -43,4 +43,4 @@ package prim_pad_wrapper_pkg;
 
   typedef logic [PokDw-1:0] pad_pok_t;
 
-endpackage : prim_pad_wrapper_pkg
+endpackage : jh_prim_pad_wrapper_pkg

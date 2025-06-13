@@ -24,9 +24,9 @@
 //       [2] https://users.ece.cmu.edu/~koopman/lfsr/
 //       [3] https://www.xilinx.com/support/documentation/application_notes/xapp052.pdf
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_lfsr #(
+module jh_prim_lfsr #(
   // Lfsr Type, can be FIB_XNOR or GAL_XOR
   parameter                    LfsrType     = "GAL_XOR",
   // Lfsr width
@@ -63,8 +63,8 @@ module prim_lfsr #(
   // is only available for LFSRs that have a power-of-two width greater or equal 16bit.
   parameter bit                NonLinearOut = 1'b0
 ) (
-  input                         clk_i,
-  input                         rst_ni,
+  input                         clk_p,
+  input                         rst_n,
   input                         seed_en_i, // load external seed into the state (takes precedence)
   input        [LfsrDw-1:0]     seed_i,    // external seed input
   input                         lfsr_en_i, // enables the LFSR
@@ -323,8 +323,8 @@ module prim_lfsr #(
     end else begin : gen_lut
       assign coeffs = GAL_XOR_COEFFS[LfsrDw-GAL_XOR_LUT_OFF][LfsrDw-1:0];
       // check that the most significant bit of polynomial is 1
-      `ASSERT_INIT(MinLfsrWidth_A, LfsrDw >= $low(GAL_XOR_COEFFS)+GAL_XOR_LUT_OFF)
-      `ASSERT_INIT(MaxLfsrWidth_A, LfsrDw <= $high(GAL_XOR_COEFFS)+GAL_XOR_LUT_OFF)
+      `JH_ASSERT_INIT(MinLfsrWidth_A, LfsrDw >= $low(GAL_XOR_COEFFS)+GAL_XOR_LUT_OFF)
+      `JH_ASSERT_INIT(MaxLfsrWidth_A, LfsrDw <= $high(GAL_XOR_COEFFS)+GAL_XOR_LUT_OFF)
     end
 
     // calculate next state using internal XOR feedback and entropy input
@@ -334,7 +334,7 @@ module prim_lfsr #(
     assign lockup = ~(|lfsr_q);
 
     // check that seed is not all-zero
-    `ASSERT_INIT(DefaultSeedNzCheck_A, |DefaultSeed)
+    `JH_ASSERT_INIT(DefaultSeedNzCheck_A, |DefaultSeed)
 
 
   ////////////////////
@@ -348,8 +348,8 @@ module prim_lfsr #(
     end else begin : gen_lut
       assign coeffs = FIB_XNOR_COEFFS[LfsrDw-FIB_XNOR_LUT_OFF][LfsrDw-1:0];
       // check that the most significant bit of polynomial is 1
-      `ASSERT_INIT(MinLfsrWidth_A, LfsrDw >= $low(FIB_XNOR_COEFFS)+FIB_XNOR_LUT_OFF)
-      `ASSERT_INIT(MaxLfsrWidth_A, LfsrDw <= $high(FIB_XNOR_COEFFS)+FIB_XNOR_LUT_OFF)
+      `JH_ASSERT_INIT(MinLfsrWidth_A, LfsrDw >= $low(FIB_XNOR_COEFFS)+FIB_XNOR_LUT_OFF)
+      `JH_ASSERT_INIT(MaxLfsrWidth_A, LfsrDw <= $high(FIB_XNOR_COEFFS)+FIB_XNOR_LUT_OFF)
     end
 
     // calculate next state using external XNOR feedback and entropy input
@@ -359,7 +359,7 @@ module prim_lfsr #(
     assign lockup = &lfsr_q;
 
     // check that seed is not all-ones
-    `ASSERT_INIT(DefaultSeedNzCheck_A, !(&DefaultSeed))
+    `JH_ASSERT_INIT(DefaultSeedNzCheck_A, !(&DefaultSeed))
 
 
   /////////////
@@ -369,7 +369,7 @@ module prim_lfsr #(
     assign coeffs = '0;
     assign next_lfsr_state = '0;
     assign lockup = 1'b0;
-    `ASSERT_INIT(UnknownLfsrType_A, 0)
+    `JH_ASSERT_INIT(UnknownLfsrType_A, 0)
   end
 
 
@@ -460,7 +460,7 @@ module prim_lfsr #(
         end
       end
       // All bit positions must be marked with 1.
-      `ASSERT(SboxPermutationCheck_A, &sbox_perm_test)
+      `JH_ASSERT(SboxPermutationCheck_A, &sbox_perm_test)
 `endif
 
 `ifdef FPV_ON
@@ -469,10 +469,10 @@ module prim_lfsr #(
       // offsets.
       int shift;
       int unsigned sk, sj;
-      `ASSUME(SjSkRange_M, (sj < NumSboxes) && (sk < NumSboxes))
-      `ASSUME(SjSkDifferent_M, sj != sk)
-      `ASSUME(SjSkStable_M, ##1 $stable(sj) && $stable(sk) && $stable(shift))
-      `ASSERT(SboxInputIndexGroupIsUnique_A,
+      `JH_ASSUME(SjSkRange_M, (sj < NumSboxes) && (sk < NumSboxes))
+      `JH_ASSUME(SjSkDifferent_M, sj != sk)
+      `JH_ASSUME(SjSkStable_M, ##1 $stable(sj) && $stable(sk) && $stable(shift))
+      `JH_ASSERT(SboxInputIndexGroupIsUnique_A,
           !((((sbox_in_indices[sj * 4 + 0] + shift) % LfsrDw) == sbox_in_indices[sk * 4 + 0]) &&
             (((sbox_in_indices[sj * 4 + 1] + shift) % LfsrDw) == sbox_in_indices[sk * 4 + 1]) &&
             (((sbox_in_indices[sj * 4 + 2] + shift) % LfsrDw) == sbox_in_indices[sk * 4 + 2]) &&
@@ -482,9 +482,9 @@ module prim_lfsr #(
       // i.e. no two neighboring bits are mapped to neighboring bit positions.
       int y;
       int unsigned ik;
-      `ASSUME(IkYRange_M, (ik < LfsrDw) && (y == 1 || y == -1))
-      `ASSUME(IkStable_M, ##1 $stable(ik) && $stable(y))
-      `ASSERT(IndicesNotAdjacent_A, (sbox_in_indices[ik] - sbox_in_indices[(ik + y) % LfsrDw]) != 1)
+      `JH_ASSUME(IkYRange_M, (ik < LfsrDw) && (y == 1 || y == -1))
+      `JH_ASSUME(IkStable_M, ##1 $stable(ik) && $stable(y))
+      `JH_ASSERT(IndicesNotAdjacent_A, (sbox_in_indices[ik] - sbox_in_indices[(ik + y) % LfsrDw]) != 1)
 `endif
 
     // Use the permutation indices to create the SBox layer
@@ -494,7 +494,7 @@ module prim_lfsr #(
                         lfsr_q[sbox_in_indices[k*4 + 2]],
                         lfsr_q[sbox_in_indices[k*4 + 1]],
                         lfsr_q[sbox_in_indices[k*4 + 0]]};
-      assign sbox_out[k*4 +: 4] = prim_cipher_pkg::PRINCE_SBOX4[sbox_in];
+      assign sbox_out[k*4 +: 4] = jh_prim_cipher_pkg::PRINCE_SBOX4[sbox_in];
     end
   end else begin : gen_out_passthru
     assign sbox_out = lfsr_q;
@@ -518,8 +518,8 @@ module prim_lfsr #(
     assign state_o = StateOutDw'(sbox_out);
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_reg
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_reg
+    if (!rst_n) begin
       lfsr_q <= DefaultSeed;
     end else begin
       lfsr_q <= lfsr_d;
@@ -531,7 +531,7 @@ module prim_lfsr #(
   // shared assertions //
   ///////////////////////
 
-  `ASSERT_KNOWN(DataKnownO_A, state_o)
+  `JH_ASSERT_KNOWN(DataKnownO_A, state_o)
 
 // the code below is not meant to be synthesized,
 // but it is intended to be used in simulation and FPV
@@ -576,9 +576,9 @@ module prim_lfsr #(
   // erroneous SVA triggers right after reset deassertion in cases where
   // the precondition is true throughout the reset.
   // this can happen since the disable_iff evaluates using unsampled values,
-  // meaning that the assertion may already read rst_ni == 1 on an active
+  // meaning that the assertion may already read rst_n == 1 on an active
   // clock edge while the flops in the design have not yet changed state.
-  `ASSERT(NextStateCheck_A, ##1 lfsr_en_i && !seed_en_i |=> lfsr_q ==
+  `JH_ASSERT(NextStateCheck_A, ##1 lfsr_en_i && !seed_en_i |=> lfsr_q ==
       compute_next_state(coeffs, $past(entropy_i), $past(lfsr_q)))
 
   // Only check this if enabled.
@@ -591,33 +591,33 @@ module prim_lfsr #(
         lfsr_perm_test[StatePerm[k]] = 1'b1;
       end
       // All bit positions must be marked with 1.
-      `ASSERT_I(PermutationCheck_A, &lfsr_perm_test)
+      `JH_ASSERT_I(PermutationCheck_A, &lfsr_perm_test)
     end
   end
 
 `endif
 
-  `ASSERT_INIT(InputWidth_A, LfsrDw >= EntropyDw)
-  `ASSERT_INIT(OutputWidth_A, LfsrDw >= StateOutDw)
+  `JH_ASSERT_INIT(InputWidth_A, LfsrDw >= EntropyDw)
+  `JH_ASSERT_INIT(OutputWidth_A, LfsrDw >= StateOutDw)
 
   // MSB must be one in any case
-  `ASSERT(CoeffCheck_A, coeffs[LfsrDw-1])
+  `JH_ASSERT(CoeffCheck_A, coeffs[LfsrDw-1])
 
   // output check
-  `ASSERT_KNOWN(OutputKnown_A, state_o)
+  `JH_ASSERT_KNOWN(OutputKnown_A, state_o)
   if (!StatePermEn && !NonLinearOut) begin : gen_output_sva
-    `ASSERT(OutputCheck_A, state_o == StateOutDw'(lfsr_q))
+    `JH_ASSERT(OutputCheck_A, state_o == StateOutDw'(lfsr_q))
   end
   // if no external input changes the lfsr state, a lockup must not occur (by design)
-  //`ASSERT(NoLockups_A, (!entropy_i) && (!seed_en_i) |=> !lockup, clk_i, !rst_ni)
-  `ASSERT(NoLockups_A, lfsr_en_i && !entropy_i && !seed_en_i |=> !lockup)
+  //`JH_ASSERT(NoLockups_A, (!entropy_i) && (!seed_en_i) |=> !lockup, clk_p, !rst_n)
+  `JH_ASSERT(NoLockups_A, lfsr_en_i && !entropy_i && !seed_en_i |=> !lockup)
 
   // this can be disabled if unused in order to not distort coverage
   if (ExtSeedSVA) begin : gen_ext_seed_sva
     // check that external seed is correctly loaded into the state
-    // rst_ni is used directly as part of the pre-condition since the usage of rst_ni
+    // rst_n is used directly as part of the pre-condition since the usage of rst_n
     // in disable_iff is unsampled.  See #1985 for more details
-    `ASSERT(ExtDefaultSeedInputCheck_A, (seed_en_i && rst_ni) |=> lfsr_q == $past(seed_i))
+    `JH_ASSERT(ExtDefaultSeedInputCheck_A, (seed_en_i && rst_n) |=> lfsr_q == $past(seed_i))
   end
 
   // if the external seed mechanism is not used,
@@ -625,12 +625,12 @@ module prim_lfsr #(
   // in order to not distort coverage, this SVA can be disabled in such cases
   if (LockupSVA) begin : gen_lockup_mechanism_sva
     // check that a stuck LFSR is correctly reseeded
-    `ASSERT(LfsrLockupCheck_A, lfsr_en_i && lockup && !seed_en_i |=> !lockup)
+    `JH_ASSERT(LfsrLockupCheck_A, lfsr_en_i && lockup && !seed_en_i |=> !lockup)
   end
 
   // If non-linear output requested, the LFSR width must be a power of 2 and greater than 16.
   if(NonLinearOut) begin : gen_nonlinear_align_check_sva
-    `ASSERT_INIT(SboxByteAlign_A, 2**$clog2(LfsrDw) == LfsrDw && LfsrDw >= 16)
+    `JH_ASSERT_INIT(SboxByteAlign_A, 2**$clog2(LfsrDw) == LfsrDw && LfsrDw >= 16)
   end
 
   if (MaxLenSVA) begin : gen_max_len_sva
@@ -649,8 +649,8 @@ module prim_lfsr #(
 
     assign perturbed_d = perturbed_q | (|entropy_i) | seed_en_i;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_max_len
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_max_len
+      if (!rst_n) begin
         cnt_q       <= '0;
         perturbed_q <= 1'b0;
       end else begin
@@ -659,10 +659,10 @@ module prim_lfsr #(
       end
     end
 
-    `ASSERT(MaximalLengthCheck0_A, cnt_q == 0 |-> lfsr_q == DefaultSeed,
-        clk_i, !rst_ni || perturbed_q)
-    `ASSERT(MaximalLengthCheck1_A, cnt_q != 0 |-> lfsr_q != DefaultSeed,
-        clk_i, !rst_ni || perturbed_q)
+    `JH_ASSERT(MaximalLengthCheck0_A, cnt_q == 0 |-> lfsr_q == DefaultSeed,
+        clk_p, !rst_n || perturbed_q)
+    `JH_ASSERT(MaximalLengthCheck1_A, cnt_q != 0 |-> lfsr_q != DefaultSeed,
+        clk_p, !rst_n || perturbed_q)
 `endif
   end
 

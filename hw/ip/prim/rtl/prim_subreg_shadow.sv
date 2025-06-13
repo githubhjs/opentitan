@@ -4,17 +4,17 @@
 //
 // Shadowed register slice conforming to Comportibility guide.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_subreg_shadow
-  import prim_subreg_pkg::*;
+module jh_prim_subreg_shadow
+  import jh_prim_subreg_pkg::*;
 #(
   parameter int            DW       = 32,
   parameter sw_access_e    SwAccess = SwAccessRW,
   parameter logic [DW-1:0] RESVAL   = '0    // reset value
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
   input rst_shadowed_ni,
 
   // From SW: valid for RW, WO, W1C, W1S, W0C, RC.
@@ -45,7 +45,7 @@ module prim_subreg_shadow
   // Since the shadow register works with the 1's complement value,
   // we need to invert the polarity of the SW access if it is either "W1S" or "W0C".
   // W1C is forbidden since the W0S complement is not implemented.
-  `ASSERT_INIT(CheckSwAccessIsLegal_A,
+  `JH_ASSERT_INIT(CheckSwAccessIsLegal_A,
       SwAccess inside {SwAccessRW, SwAccessRO, SwAccessWO, SwAccessW1S, SwAccessW0C})
   localparam sw_access_e InvertedSwAccess = (SwAccess == SwAccessW1S) ? SwAccessW0C :
                                             (SwAccess == SwAccessW0C) ? SwAccessW1S : SwAccess;
@@ -74,7 +74,7 @@ module prim_subreg_shadow
   logic          wr_en;
   logic [DW-1:0] wr_data;
 
-  prim_subreg_arb #(
+  jh_prim_subreg_arb #(
     .DW       ( DW       ),
     .SwAccess ( SwAccess )
   ) wr_en_data_arb (
@@ -95,8 +95,8 @@ module prim_subreg_shadow
   // Phase tracker:
   // - Reads from SW clear the phase back to 0.
   // - Writes have priority (can come from SW or HW).
-  always_ff @(posedge clk_i or negedge rst_ni) begin : phase_reg
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : phase_reg
+    if (!rst_n) begin
       phase_q <= 1'b0;
     end else if (wr_en && !err_storage) begin
       phase_q <= ~phase_q;
@@ -111,13 +111,13 @@ module prim_subreg_shadow
   // - Once storage error occurs, do not allow any further update until reset
   assign staged_we = we & ~phase_q & ~err_storage;
   assign staged_de = de & ~phase_q & ~err_storage;
-  prim_subreg #(
+  jh_prim_subreg #(
     .DW       ( DW             ),
     .SwAccess ( StagedSwAccess ),
     .RESVAL   ( ~RESVAL        )
   ) staged_reg (
-    .clk_i    ( clk_i     ),
-    .rst_ni   ( rst_ni    ),
+    .clk_p    ( clk_p     ),
+    .rst_n   ( rst_n    ),
     .we       ( staged_we ),
     .wd       ( ~wr_data  ),
     .de       ( staged_de ),
@@ -136,13 +136,13 @@ module prim_subreg_shadow
   // - Once storage error occurs, do not allow any further update until reset
   assign shadow_we = we & phase_q & ~err_update & ~err_storage;
   assign shadow_de = de & phase_q & ~err_update & ~err_storage;
-  prim_subreg #(
+  jh_prim_subreg #(
     .DW       ( DW               ),
     .SwAccess ( InvertedSwAccess ),
     .RESVAL   ( ~RESVAL          )
   ) shadow_reg (
-    .clk_i    ( clk_i           ),
-    .rst_ni   ( rst_shadowed_ni ),
+    .clk_p    ( clk_p           ),
+    .rst_n   ( rst_shadowed_ni ),
     .we       ( shadow_we       ),
     .wd       ( staged_q        ),
     .de       ( shadow_de       ),
@@ -158,13 +158,13 @@ module prim_subreg_shadow
   // - Writes are ignored in case of update errors.
   assign committed_we = shadow_we;
   assign committed_de = shadow_de;
-  prim_subreg #(
+  jh_prim_subreg #(
     .DW       ( DW       ),
     .SwAccess ( SwAccess ),
     .RESVAL   ( RESVAL   )
   ) committed_reg (
-    .clk_i    ( clk_i        ),
-    .rst_ni   ( rst_ni       ),
+    .clk_p    ( clk_p        ),
+    .rst_n   ( rst_n       ),
     .we       ( committed_we ),
     .wd       ( wr_data      ),
     .de       ( committed_de ),

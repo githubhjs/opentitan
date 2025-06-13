@@ -24,9 +24,9 @@
 // https://ieeexplore.ieee.org/document/542803
 
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_gf_mult #(
+module jh_prim_gf_mult #(
   parameter int Width = 32,
   parameter int StagesPerCycle = Width,
 
@@ -41,8 +41,8 @@ module prim_gf_mult #(
                                      Width'(1'b1) << 3  |
                                      Width'(1'b1) << 0
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
   input req_i,
   input [Width-1:0] operand_a_i,
   input [Width-1:0] operand_b_i,
@@ -50,8 +50,8 @@ module prim_gf_mult #(
   output logic [Width-1:0] prod_o
 );
 
-  `ASSERT_INIT(IntegerLoops_A, (Width % StagesPerCycle) == 0)
-  `ASSERT_INIT(StagePow2_A, $onehot(StagesPerCycle))
+  `JH_ASSERT_INIT(IntegerLoops_A, (Width % StagesPerCycle) == 0)
+  `JH_ASSERT_INIT(StagePow2_A, $onehot(StagesPerCycle))
 
   localparam int Loops = Width / StagesPerCycle;
   localparam int CntWidth = (Loops == 1) ? 1 : $clog2(Loops);
@@ -97,8 +97,8 @@ module prim_gf_mult #(
     assign ack_o = int'(cnt) == (Loops - 1);
 
     // advance the stage count and also advance the bit position count
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         cnt <= '0;
       end else if (req_i && ack_o) begin
         cnt <= '0;
@@ -107,8 +107,8 @@ module prim_gf_mult #(
       end
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         prod_q <= '0;
         vector <= '0;
       end else if (ack_o) begin
@@ -168,4 +168,4 @@ module prim_gf_mult #(
     return mult_out;
   endfunction // gf_mult
 
-endmodule // prim_gf_mult
+endmodule // jh_prim_gf_mult

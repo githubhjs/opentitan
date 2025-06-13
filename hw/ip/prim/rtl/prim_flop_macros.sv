@@ -9,8 +9,8 @@
 // Default Values for Macros below //
 /////////////////////////////////////
 
-`define PRIM_FLOP_CLK clk_i
-`define PRIM_FLOP_RST rst_ni
+`define PRIM_FLOP_CLK clk_p
+`define PRIM_FLOP_RST rst_n
 `define PRIM_FLOP_RESVAL '0
 
 /////////////////////
@@ -38,34 +38,34 @@
 // like Xcelium and VCS seem to have problems inferring FSMs if the state register is not coded in
 // a behavioral always_ff block in the same hierarchy. To that end, this uses a modified variant
 // with a second behavioral register definition for RTL simulations so that FSMs can be inferred.
-// Note that in this variant, the __q output is disconnected from prim_sparse_fsm_flop and attached
+// Note that in this variant, the __q output is disconnected from jh_prim_sparse_fsm_flop and attached
 // to the behavioral flop. An assertion is added to ensure equivalence between the
-// prim_sparse_fsm_flop output and the behavioral flop output in that case.
+// jh_prim_sparse_fsm_flop output and the behavioral flop output in that case.
 `define PRIM_FLOP_SPARSE_FSM(__name, __d, __q, __type, __resval = `PRIM_FLOP_RESVAL, __clk = `PRIM_FLOP_CLK, __rst_n = `PRIM_FLOP_RST, __alert_trigger_sva_en = 1) \
   `ifdef SIMULATION                                   \
-    prim_sparse_fsm_flop #(                           \
+    jh_prim_sparse_fsm_flop #(                           \
       .StateEnumT(__type),                            \
       .Width($bits(__type)),                          \
       .ResetValue($bits(__type)'(__resval)),          \
       .EnableAlertTriggerSVA(__alert_trigger_sva_en), \
       .CustomForceName(`PRIM_STRINGIFY(__q))          \
     ) __name (                                        \
-      .clk_i   ( __clk   ),                           \
-      .rst_ni  ( __rst_n ),                           \
+      .clk_p   ( __clk   ),                           \
+      .rst_n  ( __rst_n ),                           \
       .state_i ( __d     ),                           \
       .state_o (         )                            \
     );                                                \
     `PRIM_FLOP_A(__d, __q, __resval, __clk, __rst_n)  \
-    `ASSERT(``__name``_A, __q === ``__name``.state_o) \
+    `JH_ASSERT(``__name``_A, __q === ``__name``.state_o) \
   `else                                               \
-    prim_sparse_fsm_flop #(                           \
+    jh_prim_sparse_fsm_flop #(                           \
       .StateEnumT(__type),                            \
       .Width($bits(__type)),                          \
       .ResetValue($bits(__type)'(__resval)),          \
       .EnableAlertTriggerSVA(__alert_trigger_sva_en)  \
     ) __name (                                        \
-      .clk_i   ( __clk   ),                           \
-      .rst_ni  ( __rst_n ),                           \
+      .clk_p   ( __clk   ),                           \
+      .rst_n  ( __rst_n ),                           \
       .state_i ( __d     ),                           \
       .state_o ( __q     )                            \
     );                                                \

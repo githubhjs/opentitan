@@ -20,9 +20,9 @@
 // Note that if both incr_en_i and decr_en_i are asserted at the same time, the counter remains
 // unchanged. The counter is also protected against under- and overflows.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_count #(
+module jh_prim_count #(
   parameter int Width = 2,
   // Can be used to reset the counter to a different value than 0, for example when
   // the counter is used as a down-counter.
@@ -31,8 +31,8 @@ module prim_count #(
   // in non-comportable IPs where an error does not trigger an alert.
   parameter bit EnableAlertTriggerSVA = 1
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
   input clr_i,
   input set_i,
   input [Width-1:0] set_cnt_i,         // Set value for the counter.
@@ -101,12 +101,12 @@ module prim_count #(
                       (cnt_en) ? cnt_sat        : cnt_q[k];
 
     logic [Width-1:0] cnt_unforced_q;
-    prim_flop #(
+    jh_prim_flop #(
       .Width(Width),
       .ResetValue(ResetValues[k])
     ) u_cnt_flop (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i(cnt_d[k]),
       .q_o(cnt_unforced_q)
     );
@@ -147,111 +147,111 @@ module prim_count #(
   endfunction
 
   // Cnt next
-  `ASSERT(CntNext_A,
-      rst_ni
+  `JH_ASSERT(CntNext_A,
+      rst_n
       |=>
       cnt_o == $past(cnt_next_o),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Clear
-  `ASSERT(ClrFwd_A,
-      rst_ni && clr_i
+  `JH_ASSERT(ClrFwd_A,
+      rst_n && clr_i
       |=>
       (cnt_o == ResetValue) &&
       (cnt_q[1] == ({Width{1'b1}} - ResetValue)),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(ClrBkwd_A,
-      rst_ni && !(incr_en_i || decr_en_i || set_i) ##1
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(ClrBkwd_A,
+      rst_n && !(incr_en_i || decr_en_i || set_i) ##1
       $changed(cnt_o) && $changed(cnt_q[1])
       |->
       $past(clr_i),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Set
-  `ASSERT(SetFwd_A,
-      rst_ni && set_i && !clr_i
+  `JH_ASSERT(SetFwd_A,
+      rst_n && set_i && !clr_i
       |=>
       (cnt_o == $past(set_cnt_i)) &&
       (cnt_q[1] == ({Width{1'b1}} - $past(set_cnt_i))),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(SetBkwd_A,
-      rst_ni && !(incr_en_i || decr_en_i || clr_i) ##1
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(SetBkwd_A,
+      rst_n && !(incr_en_i || decr_en_i || clr_i) ##1
       $changed(cnt_o) && $changed(cnt_q[1])
       |->
       $past(set_i),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Do not count if both increment and decrement are asserted.
-  `ASSERT(IncrDecrUpDnCnt_A,
-      rst_ni && incr_en_i && decr_en_i && !(clr_i || set_i)
+  `JH_ASSERT(IncrDecrUpDnCnt_A,
+      rst_n && incr_en_i && decr_en_i && !(clr_i || set_i)
       |=>
       $stable(cnt_o) && $stable(cnt_q[1]),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Up counter
-  `ASSERT(IncrUpCnt_A,
-      rst_ni && incr_en_i && !(clr_i || set_i || decr_en_i)
+  `JH_ASSERT(IncrUpCnt_A,
+      rst_n && incr_en_i && !(clr_i || set_i || decr_en_i)
       |=>
       cnt_o == min($past(cnt_o) + $past({2'b0, step_i}), {2'b0, {Width{1'b1}}}),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(IncrDnCnt_A,
-      rst_ni && incr_en_i && !(clr_i || set_i || decr_en_i)
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(IncrDnCnt_A,
+      rst_n && incr_en_i && !(clr_i || set_i || decr_en_i)
       |=>
       cnt_q[1] == max($past(signed'({2'b0, cnt_q[1]})) - $past({2'b0, step_i}), '0),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(UpCntIncrStable_A,
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(UpCntIncrStable_A,
       incr_en_i && !(clr_i || set_i || decr_en_i) &&
       cnt_o == {Width{1'b1}}
       |=>
       $stable(cnt_o),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(UpCntDecrStable_A,
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(UpCntDecrStable_A,
       decr_en_i && !(clr_i || set_i || incr_en_i) &&
       cnt_o == '0
       |=>
       $stable(cnt_o),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Down counter
-  `ASSERT(DecrUpCnt_A,
-      rst_ni && decr_en_i && !(clr_i || set_i || incr_en_i)
+  `JH_ASSERT(DecrUpCnt_A,
+      rst_n && decr_en_i && !(clr_i || set_i || incr_en_i)
       |=>
       cnt_o == max($past(signed'({2'b0, cnt_o})) - $past({2'b0, step_i}), '0),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(DecrDnCnt_A,
-      rst_ni && decr_en_i && !(clr_i || set_i || incr_en_i)
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(DecrDnCnt_A,
+      rst_n && decr_en_i && !(clr_i || set_i || incr_en_i)
       |=>
       cnt_q[1] == min($past(cnt_q[1]) + $past({2'b0, step_i}), {2'b0, {Width{1'b1}}}),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(DnCntIncrStable_A,
-      rst_ni && incr_en_i && !(clr_i || set_i || decr_en_i) &&
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(DnCntIncrStable_A,
+      rst_n && incr_en_i && !(clr_i || set_i || decr_en_i) &&
       cnt_q[1] == '0
       |=>
       $stable(cnt_q[1]),
-      clk_i, err_o || fpv_err_present || !rst_ni)
-  `ASSERT(DnCntDecrStable_A,
-      rst_ni && decr_en_i && !(clr_i || set_i || incr_en_i) &&
+      clk_p, err_o || fpv_err_present || !rst_n)
+  `JH_ASSERT(DnCntDecrStable_A,
+      rst_n && decr_en_i && !(clr_i || set_i || incr_en_i) &&
       cnt_q[1] == {Width{1'b1}}
       |=>
       $stable(cnt_q[1]),
-      clk_i, err_o || fpv_err_present || !rst_ni)
+      clk_p, err_o || fpv_err_present || !rst_n)
 
   // Error
-  `ASSERT(CntErrForward_A,
+  `JH_ASSERT(CntErrForward_A,
       (cnt_q[1] + cnt_q[0]) != {Width{1'b1}}
       |->
       err_o)
-  `ASSERT(CntErrBackward_A,
+  `JH_ASSERT(CntErrBackward_A,
       err_o
       |->
       (cnt_q[1] + cnt_q[0]) != {Width{1'b1}})
 
   // This logic that will be assign to one, when user adds macro
-  // ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT to check the error with alert, in case that prim_count
+  // ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT to check the error with alert, in case that jh_prim_count
   // is used in design without adding this assertion check.
   logic unused_assert_connected;
 
-  `ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
+  `JH_ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
 `endif
 
-endmodule // prim_count
+endmodule // jh_prim_count

@@ -8,9 +8,9 @@
 // for each bit in the life cycle control signal such that tools do not
 // optimize the multibit encoding.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_lc_sender #(
+module jh_prim_lc_sender #(
   // This flops the output if set to 1.
   // In special cases where the sender is in the same clock domain as the receiver,
   // this can be set to 0. However, it is recommended to leave this at 1.
@@ -19,8 +19,8 @@ module prim_lc_sender #(
   // 1: reset value is lc_ctrl_pkg::On
   parameter bit ResetValueIsOn = 0
 ) (
-  input                       clk_i,
-  input                       rst_ni,
+  input                       clk_p,
+  input                       rst_n,
   input  lc_ctrl_pkg::lc_tx_t lc_en_i,
   output lc_ctrl_pkg::lc_tx_t lc_en_o
 );
@@ -32,18 +32,18 @@ module prim_lc_sender #(
   assign lc_en = lc_ctrl_pkg::TxWidth'(lc_en_i);
 
   if (AsyncOn) begin : gen_flops
-    prim_sec_anchor_flop #(
+    jh_prim_sec_anchor_flop #(
       .Width(lc_ctrl_pkg::TxWidth),
       .ResetValue(lc_ctrl_pkg::TxWidth'(ResetValue))
     ) u_prim_flop (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i   ( lc_en     ),
       .q_o   ( lc_en_out )
     );
   end else begin : gen_no_flops
     for (genvar k = 0; k < lc_ctrl_pkg::TxWidth; k++) begin : gen_bits
-      prim_sec_anchor_buf u_prim_buf (
+      jh_prim_sec_anchor_buf u_prim_buf (
         .in_i(lc_en[k]),
         .out_o(lc_en_out[k])
       );
@@ -54,8 +54,8 @@ module prim_lc_sender #(
     // or nothing at all.
     // This logic will be removed for sythesis since it is unloaded.
     lc_ctrl_pkg::lc_tx_t unused_logic;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
          unused_logic <= lc_ctrl_pkg::Off;
       end else begin
          unused_logic <= lc_en_i;
@@ -65,4 +65,4 @@ module prim_lc_sender #(
 
   assign lc_en_o = lc_ctrl_pkg::lc_tx_t'(lc_en_out);
 
-endmodule : prim_lc_sender
+endmodule : jh_prim_lc_sender

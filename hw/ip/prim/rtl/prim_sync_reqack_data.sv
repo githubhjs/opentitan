@@ -11,12 +11,12 @@
 // from the destination (DST) to the source (SRC) domain, an additional register stage can be
 // inserted for data buffering.
 //
-// Under the hood, this module uses a prim_sync_reqack primitive for synchronizing the
-// REQ/ACK handshake. See prim_sync_reqack.sv for more details.
+// Under the hood, this module uses a jh_prim_sync_reqack primitive for synchronizing the
+// REQ/ACK handshake. See jh_prim_sync_reqack.sv for more details.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_sync_reqack_data #(
+module jh_prim_sync_reqack_data #(
   parameter int unsigned Width       = 1,
   parameter bit          DataSrc2Dst = 1'b1, // Direction of data flow: 1'b1 = SRC to DST,
                                              //                         1'b0 = DST to SRC
@@ -42,7 +42,7 @@ module prim_sync_reqack_data #(
   ////////////////////////////////////
   // REQ/ACK synchronizer primitive //
   ////////////////////////////////////
-  prim_sync_reqack u_prim_sync_reqack (
+  jh_prim_sync_reqack u_prim_sync_reqack (
     .clk_src_i,
     .rst_src_ni,
     .clk_dst_i,
@@ -90,12 +90,12 @@ module prim_sync_reqack_data #(
   ////////////////
   if (DataSrc2Dst == 1'b1) begin : gen_assert_data_src2dst
     // SRC domain cannot change data while waiting for ACK.
-    `ASSERT(SyncReqAckDataHoldSrc2Dst, !$stable(data_i) |->
+    `JH_ASSERT(SyncReqAckDataHoldSrc2Dst, !$stable(data_i) |->
         (!src_req_i || (src_req_i && src_ack_o)),
         clk_src_i, !rst_src_ni)
 
     // Register stage cannot be used.
-    `ASSERT_INIT(SyncReqAckDataReg, DataSrc2Dst && !DataReg)
+    `JH_ASSERT_INIT(SyncReqAckDataReg, DataSrc2Dst && !DataReg)
 
   end else if (DataSrc2Dst == 1'b0 && DataReg == 1'b0) begin : gen_assert_data_dst2src
     // DST domain shall not change data while waiting for SRC domain to latch it (together with
@@ -119,10 +119,10 @@ module prim_sync_reqack_data #(
     // assertion into two pieces. The first (SyncReqAckDataHoldDst2SrcA) checks that data doesn't
     // change in a way that could cause data corruption. The second (SyncReqAckDataHoldDst2SrcB)
     // checks that the DST side doesn't do anything that it shouldn't know is safe.
-    `ASSERT(SyncReqAckDataHoldDst2SrcA,
+    `JH_ASSERT(SyncReqAckDataHoldDst2SrcA,
             src_req_i && src_ack_o |-> $past(data_o, 2) == data_o && $past(data_o) == data_o,
             clk_src_i, !rst_src_ni)
-    `ASSERT(SyncReqAckDataHoldDst2SrcB,
+    `JH_ASSERT(SyncReqAckDataHoldDst2SrcB,
             $past(src_req_i && src_ack_o) |-> $past(data_o) == data_o,
             clk_src_i, !rst_src_ni)
   end

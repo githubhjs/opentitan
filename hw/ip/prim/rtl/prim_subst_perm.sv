@@ -7,9 +7,9 @@
 // that this is **not** cryptographically secure. The main purpose of this primitive is to
 // provide a cheap diffusion mechanism for arbitrarily sized vectors.
 //
-// See also: prim_prince, prim_present, prim_cipher_pkg
+// See also: jh_prim_prince, jh_prim_present, jh_prim_cipher_pkg
 
-module prim_subst_perm #(
+module jh_prim_subst_perm #(
   parameter int DataWidth = 64,
   parameter int NumRounds = 31,
   parameter bit Decrypt   = 0    // 0: encrypt, 1: decrypt
@@ -53,7 +53,7 @@ module prim_subst_perm #(
         end
         // Inverse SBox layer
         for (int k = 0; k < DataWidth/4; k++) begin
-          data_state_sbox[k*4 +: 4] = prim_cipher_pkg::PRESENT_SBOX4_INV[data_state_sbox[k*4 +: 4]];
+          data_state_sbox[k*4 +: 4] = jh_prim_cipher_pkg::PRESENT_SBOX4_INV[data_state_sbox[k*4 +: 4]];
         end
         data_state[r + 1] = data_state_sbox;
       end
@@ -66,7 +66,7 @@ module prim_subst_perm #(
         // However, the permutation below ensures that these bits get shuffled to a different
         // position when performing multiple rounds.
         for (int k = 0; k < DataWidth/4; k++) begin
-          data_state_sbox[k*4 +: 4] = prim_cipher_pkg::PRESENT_SBOX4[data_state_sbox[k*4 +: 4]];
+          data_state_sbox[k*4 +: 4] = jh_prim_cipher_pkg::PRESENT_SBOX4[data_state_sbox[k*4 +: 4]];
         end
         // Flip the vector to move the MSB positions into the LSB positions
         for (int k = 0; k < DataWidth; k++) begin
@@ -89,4 +89,4 @@ module prim_subst_perm #(
   // finalize
   assign data_o = data_state[NumRounds] ^ key_i;
 
-endmodule : prim_subst_perm
+endmodule : jh_prim_subst_perm

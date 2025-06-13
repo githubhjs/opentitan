@@ -6,7 +6,7 @@
 /**
  * Utility functions
  */
-package prim_util_pkg;
+package jh_prim_util_pkg;
   /**
    * Math function: $clog2 as specified in Verilog-2005
    *

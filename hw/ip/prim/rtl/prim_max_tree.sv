@@ -14,17 +14,17 @@
 // be equal to the input value at index 0.
 
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_max_tree #(
+module jh_prim_max_tree #(
   parameter int NumSrc = 32,
   parameter int Width = 8,
   // Derived parameters
   localparam int SrcWidth = $clog2(NumSrc)
 ) (
   // The module is combinational - the clock and reset are only used for assertions.
-  input                         clk_i,
-  input                         rst_ni,
+  input                         clk_p,
+  input                         rst_n,
   input [NumSrc-1:0][Width-1:0] values_i,    // Input values
   input [NumSrc-1:0]            valid_i,     // Input valid bits
   output logic [Width-1:0]      max_value_o, // Maximum value
@@ -37,7 +37,7 @@ module prim_max_tree #(
   ///////////////////////
 
   // This only works with 2 or more sources.
-  `ASSERT_INIT(NumSources_A, NumSrc >= 2)
+  `JH_ASSERT_INIT(NumSources_A, NumSrc >= 2)
 
   // Align to powers of 2 for simplicity.
   // A full binary tree with N levels has 2**N + 2**N-1 nodes.
@@ -136,12 +136,12 @@ module prim_max_tree #(
   assign max_idx_exp = max_idx(values_i, valid_i);
 
   // TODO(10588): Below syntax is not supported in xcelium, track xcelium cases #46591452.
-  // `ASSERT(ValidInImpliesValidOut_A, |valid_i <-> max_valid_o)
-  `ASSERT(ValidInImpliesValidOut_A, |valid_i === max_valid_o)
-  `ASSERT(MaxComputation_A, max_valid_o |-> max_value_o == max_value_exp)
-  `ASSERT(MaxComputationInvalid_A, !max_valid_o |-> max_value_o == values_i[0])
-  `ASSERT(MaxIndexComputation_A, max_valid_o |-> max_idx_o == max_idx_exp)
-  `ASSERT(MaxIndexComputationInvalid_A, !max_valid_o |-> max_idx_o == '0)
+  // `JH_ASSERT(ValidInImpliesValidOut_A, |valid_i <-> max_valid_o)
+  `JH_ASSERT(ValidInImpliesValidOut_A, |valid_i === max_valid_o)
+  `JH_ASSERT(MaxComputation_A, max_valid_o |-> max_value_o == max_value_exp)
+  `JH_ASSERT(MaxComputationInvalid_A, !max_valid_o |-> max_value_o == values_i[0])
+  `JH_ASSERT(MaxIndexComputation_A, max_valid_o |-> max_idx_o == max_idx_exp)
+  `JH_ASSERT(MaxIndexComputationInvalid_A, !max_valid_o |-> max_idx_o == '0)
 `endif
 
-endmodule : prim_max_tree
+endmodule : jh_prim_max_tree

@@ -4,7 +4,7 @@
 //
 // Edge Detector
 
-module prim_edge_detector #(
+module jh_prim_edge_detector #(
   parameter int unsigned Width = 1,
 
   parameter logic [Width-1:0] ResetValue = '0,
@@ -15,8 +15,8 @@ module prim_edge_detector #(
   // It is assumed that the input signal is glitch free (registered input).
   parameter bit EnSync  = 1'b 1
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input        [Width-1:0] d_i,
   output logic [Width-1:0] q_sync_o,
@@ -28,12 +28,12 @@ module prim_edge_detector #(
   logic [Width-1:0] q_sync_d, q_sync_q;
 
   if (EnSync) begin : g_sync
-    prim_flop_2sync #(
+    jh_prim_flop_2sync #(
       .Width (Width),
       .ResetValue (ResetValue)
     ) u_sync (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i,
       .q_o (q_sync_d)
     );
@@ -44,12 +44,12 @@ module prim_edge_detector #(
 
   assign q_sync_o = q_sync_d;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) q_sync_q <= ResetValue;
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) q_sync_q <= ResetValue;
     else         q_sync_q <= q_sync_d;
   end
 
   assign q_posedge_pulse_o = q_sync_d & ~q_sync_q;
   assign q_negedge_pulse_o = ~q_sync_d & q_sync_q;
 
-endmodule : prim_edge_detector
+endmodule : jh_prim_edge_detector

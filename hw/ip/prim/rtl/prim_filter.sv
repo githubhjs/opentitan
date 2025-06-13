@@ -10,14 +10,14 @@
 //   new input must be opposite value from stored value for
 //   #Cycles before switching to new value.
 
-module prim_filter #(
+module jh_prim_filter #(
   // If this parameter is set, an additional 2-stage synchronizer will be
   // added at the input.
   parameter bit AsyncOn = 0,
   parameter int unsigned Cycles = 4
 ) (
-  input        clk_i,
-  input        rst_ni,
+  input        clk_p,
+  input        rst_n,
   input        enable_i,
   input        filter_i,
   output logic filter_o
@@ -32,11 +32,11 @@ module prim_filter #(
   if (AsyncOn) begin : gen_async
     // Run this through a 2 stage synchronizer to
     // prevent metastability.
-    prim_flop_2sync #(
+    jh_prim_flop_2sync #(
       .Width(1)
-    ) prim_flop_2sync (
-      .clk_i,
-      .rst_ni,
+    ) jh_prim_flop_2sync (
+      .clk_p,
+      .rst_n,
       .d_i(filter_i),
       .q_o(filter_synced)
     );
@@ -44,8 +44,8 @@ module prim_filter #(
     assign filter_synced = filter_i;
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       stored_value_q <= 1'b0;
     end else if (update_stored_value) begin
       stored_value_q <= filter_synced;
@@ -55,8 +55,8 @@ module prim_filter #(
   assign stored_vector_d = {stored_vector_q[Cycles-2:0],filter_synced};
   assign unused_stored_vector_q_msb = stored_vector_q[Cycles-1];
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       stored_vector_q <= '0;
     end else begin
       stored_vector_q <= stored_vector_d;

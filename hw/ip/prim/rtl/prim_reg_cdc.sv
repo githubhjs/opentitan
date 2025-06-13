@@ -12,9 +12,9 @@
 // If in the future this assumption changes, we can modify this module easily to
 // support the new behavior.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_reg_cdc #(
+module jh_prim_reg_cdc #(
   parameter int DataWidth = 32,
   parameter logic [DataWidth-1:0] ResetVal = 32'h0,
   parameter logic [DataWidth-1:0] BitMask = 32'hFFFFFFFF,
@@ -85,7 +85,7 @@ module prim_reg_cdc #(
   // window from which hardware writes are ignored.  Once the busy window completes,
   // the cdc portion then begins sampling once more.
   //
-  // This is consistent with prim_subreg_arb where during software / hardware conflicts,
+  // This is consistent with jh_prim_subreg_arb where during software / hardware conflicts,
   // software is always prioritized.  The main difference is the conflict resolution window
   // is now larger instead of just one destination clock cycle.
 
@@ -127,7 +127,7 @@ module prim_reg_cdc #(
   // the intent clearer, it ends up causing coverage holes from the tool's perspective since that
   // condition cannot be met.
   // Thus we add an assertion here to ensure the condition is always satisfied.
-  `ASSERT(BusySrcReqChk_A, busy |-> !src_req, clk_src_i, !rst_src_ni)
+  `JH_ASSERT(BusySrcReqChk_A, busy |-> !src_req, clk_src_i, !rst_src_ni)
 
   // reserved bits are not used
   logic unused_wd;
@@ -148,8 +148,8 @@ module prim_reg_cdc #(
 
 
   // the software transaction is pulse synced across the domain.
-  // the prim_reg_cdc_arb module handles conflicts with ongoing hardware updates.
-  prim_pulse_sync u_src_to_dst_req (
+  // the jh_prim_reg_cdc_arb module handles conflicts with ongoing hardware updates.
+  jh_prim_pulse_sync u_src_to_dst_req (
     .clk_src_i,
     .rst_src_ni,
     .clk_dst_i,
@@ -158,7 +158,7 @@ module prim_reg_cdc #(
     .dst_pulse_o(dst_req_from_src)
   );
 
-  prim_reg_cdc_arb #(
+  jh_prim_reg_cdc_arb #(
     .DataWidth(DataWidth),
     .ResetVal(ResetVal),
     .DstWrReq(DstWrReq)
@@ -181,10 +181,10 @@ module prim_reg_cdc #(
   // Each is valid only when destination request pulse is high
   assign {dst_we_o, dst_re_o, dst_regwen_o} = txn_bits_q & {TxnWidth{dst_req}};
 
-  `ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
-  `ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
+  `JH_ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
+  `JH_ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
 
   // If busy goes high, we must eventually see an ack
-  `ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
+  `JH_ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
 
-endmodule // prim_subreg_cdc
+endmodule // jh_prim_subreg_cdc

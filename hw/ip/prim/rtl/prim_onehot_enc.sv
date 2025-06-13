@@ -5,7 +5,7 @@
 // One-hot encoder
 // Outputs a one-hot encoded version of an integer input.
 
-module prim_onehot_enc #(
+module jh_prim_onehot_enc #(
   parameter int unsigned OneHotWidth = 32,
   localparam int unsigned InputWidth = $clog2(OneHotWidth)
 ) (

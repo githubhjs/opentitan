@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-package prim_rom_pkg;
+package jh_prim_rom_pkg;
 
   typedef struct packed {
     logic       cfg_en;
@@ -12,4 +12,4 @@ package prim_rom_pkg;
 
   parameter rom_cfg_t ROM_CFG_DEFAULT = '0;
 
-endpackage // prim_rom_pkg
+endpackage // jh_prim_rom_pkg

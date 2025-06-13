@@ -6,7 +6,7 @@
 //
 // This module is only meant to be used in special cases where a handshake synchronizer
 // is not viable (this is for instance the case for the multibit life cycle signals).
-// For handshake-based synchronization, consider using prim_sync_reqack_data.
+// For handshake-based synchronization, consider using jh_prim_sync_reqack_data.
 //
 //
 // Description:
@@ -35,9 +35,9 @@
 // Note: CDC tools will likely flag this module due to re-convergent logic.
 //
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_multibit_sync #(
+module jh_prim_multibit_sync #(
   // Width of the multibit signal.
   parameter int               Width = 8,
   // Number of cycles the synchronized multi-bit signal needs to
@@ -47,24 +47,24 @@ module prim_multibit_sync #(
   // Reset value of the multibit signal.
   parameter logic [Width-1:0] ResetValue = '0
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
   input  logic [Width-1:0] data_i,
   output logic [Width-1:0] data_o
 );
 
-  `ASSERT_INIT(NumChecks_A, NumChecks >= 1)
+  `JH_ASSERT_INIT(NumChecks_A, NumChecks >= 1)
 
   // First, synchronize the input data to this clock domain.
   logic [NumChecks:0][Width-1:0]   data_check_d;
   logic [NumChecks-1:0][Width-1:0] data_check_q;
 
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width(Width),
     .ResetValue(ResetValue)
   ) i_prim_flop_2sync (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i(data_i),
     .q_o(data_check_d[0])
   );
@@ -77,7 +77,7 @@ module prim_multibit_sync #(
   for (genvar k = 0; k < NumChecks; k++) begin : gen_checks
     assign checks[k] = (data_check_d[k] == data_check_d[NumChecks]);
     // Output is only allowed to change when all checks have passed.
-    `ASSERT(StableCheck_A,
+    `JH_ASSERT(StableCheck_A,
           data_o != $past(data_o)
           |->
           $past(data_check_d[k]) == $past(data_check_d[NumChecks]))
@@ -88,8 +88,8 @@ module prim_multibit_sync #(
   assign data_synced_d = (&checks) ? data_check_d[NumChecks] : data_synced_q;
   assign data_o = data_synced_q;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_regs
+    if (!rst_n) begin
       data_synced_q <= ResetValue;
       data_check_q  <= {NumChecks{ResetValue}};
     end else begin
@@ -98,6 +98,6 @@ module prim_multibit_sync #(
     end
   end
 
-  `ASSERT_KNOWN(DataKnown_A, data_o)
+  `JH_ASSERT_KNOWN(DataKnown_A, data_o)
 
-endmodule : prim_multibit_sync
+endmodule : jh_prim_multibit_sync

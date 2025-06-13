@@ -9,17 +9,17 @@
 //  DW: Data width (SECDED is not included)
 //  Aw: Address width
 //  ArbiterImpl: can be either PPC or BINTREE.
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_sram_arbiter #(
+module jh_prim_sram_arbiter #(
   parameter int unsigned N  = 4,
   parameter int unsigned SramDw = 32,
   parameter int unsigned SramAw = 12,
   parameter ArbiterImpl = "PPC",
   parameter bit EnMask = 1'b 0 // Disable wmask if 0
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input        [     N-1:0] req_i,
   input        [SramAw-1:0] req_addr_i [N],
@@ -83,12 +83,12 @@ module prim_sram_arbiter #(
 
 
   if (ArbiterImpl == "PPC") begin : gen_arb_ppc
-    prim_arbiter_ppc #(
+    jh_prim_arbiter_ppc #(
       .N (N),
       .DW(ARB_DW)
     ) u_reqarb (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .req_chk_i ( 1'b1        ),
       .req_i,
       .data_i    ( req_packed  ),
@@ -99,12 +99,12 @@ module prim_sram_arbiter #(
       .ready_i   ( 1'b1        )
     );
   end else if (ArbiterImpl == "BINTREE") begin : gen_tree_arb
-    prim_arbiter_tree #(
+    jh_prim_arbiter_tree #(
       .N (N),
       .DW(ARB_DW)
     ) u_reqarb (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .req_chk_i ( 1'b1        ),
       .req_i,
       .data_i    ( req_packed  ),
@@ -115,7 +115,7 @@ module prim_sram_arbiter #(
       .ready_i   ( 1'b1        )
     );
   end else begin : gen_unknown
-    `ASSERT_INIT(UnknownArbImpl_A, 0)
+    `JH_ASSERT_INIT(UnknownArbImpl_A, 0)
   end
 
 
@@ -125,13 +125,13 @@ module prim_sram_arbiter #(
   assign sram_ack = sram_rvalid_i & (|steer);
 
   // Request FIFO
-  prim_fifo_sync #(
+  jh_prim_fifo_sync #(
     .Width    (N),
     .Pass     (1'b0),
     .Depth    (4)        // Assume at most 4 pipelined
   ) u_req_fifo (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .clr_i    (1'b0),
     .wvalid_i (sram_req_o & ~sram_write_o),  // Push only for read
     .wready_o (),     // TODO: Generate Error

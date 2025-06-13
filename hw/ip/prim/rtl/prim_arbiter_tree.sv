@@ -10,7 +10,7 @@
 //   DataPort:    Set to 1 to enable the data port. Otherwise that port will be ignored.
 //
 // This is a tree implementation of a round robin arbiter. It has the same behavior as the PPC
-// implementation in prim_arbiter_ppc, and also uses a prefix summing approach to determine the next
+// implementation in jh_prim_arbiter_ppc, and also uses a prefix summing approach to determine the next
 // request to be granted. The main difference with respect to the PPC arbiter is that the leading 1
 // detection and the prefix summation are performed with a binary tree instead of a sequential loop.
 // Also, if the data port is enabled, the data is muxed based on the local arbitration decisions  at
@@ -27,11 +27,11 @@
 // until they have been served. This assertion can be gated by driving the req_chk_i low. This is
 // a non-functional input and does not affect the designs behavior.
 //
-// See also: prim_arbiter_ppc
+// See also: jh_prim_arbiter_ppc
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_arbiter_tree #(
+module jh_prim_arbiter_tree #(
   parameter int N   = 8,
   parameter int DW  = 32,
 
@@ -42,8 +42,8 @@ module prim_arbiter_tree #(
   // Derived parameters
   localparam int IdxW = $clog2(N)
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input                    req_chk_i, // Used for gating assertions. Drive to 1 during normal
                                       // operation.
@@ -61,7 +61,7 @@ module prim_arbiter_tree #(
   logic unused_req_chk;
   assign unused_req_chk = req_chk_i;
 
-  `ASSERT_INIT(CheckNGreaterZero_A, N > 0)
+  `JH_ASSERT_INIT(CheckNGreaterZero_A, N > 0)
 
   // this case is basically just a bypass
   if (N == 1) begin : gen_degenerate_case
@@ -187,8 +187,8 @@ module prim_arbiter_tree #(
     // the mask tree is basically a prefix sum of the hot one select signal computed above
     assign mask_tree[0] = 1'b0;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_mask_reg
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_mask_reg
+      if (!rst_n) begin
         prio_mask_q <= '0;
       end else begin
         prio_mask_q <= prio_mask_d;
@@ -202,43 +202,43 @@ module prim_arbiter_tree #(
 
   // KNOWN assertions on outputs, except for data as that may be partially X in simulation
   // e.g. when used on a BUS
-  `ASSERT_KNOWN(ValidKnown_A, valid_o)
-  `ASSERT_KNOWN(GrantKnown_A, gnt_o)
-  `ASSERT_KNOWN(IdxKnown_A, idx_o)
+  `JH_ASSERT_KNOWN(ValidKnown_A, valid_o)
+  `JH_ASSERT_KNOWN(GrantKnown_A, gnt_o)
+  `JH_ASSERT_KNOWN(IdxKnown_A, idx_o)
 
   // grant index shall be higher index than previous index, unless no higher requests exist.
-  `ASSERT(RoundRobin_A,
+  `JH_ASSERT(RoundRobin_A,
       ##1 valid_o && ready_i && $past(ready_i) && $past(valid_o) &&
       |(req_i & ~((N'(1) << $past(idx_o)+1) - 1)) |->
       idx_o > $past(idx_o))
   // we can only grant one requestor at a time
-  `ASSERT(CheckHotOne_A, $onehot0(gnt_o))
+  `JH_ASSERT(CheckHotOne_A, $onehot0(gnt_o))
   // A grant implies that the sink is ready
-  `ASSERT(GntImpliesReady_A, |gnt_o |-> ready_i)
+  `JH_ASSERT(GntImpliesReady_A, |gnt_o |-> ready_i)
   // A grant implies that the arbiter asserts valid as well
-  `ASSERT(GntImpliesValid_A, |gnt_o |-> valid_o)
+  `JH_ASSERT(GntImpliesValid_A, |gnt_o |-> valid_o)
   // A request and a sink that is ready imply a grant
-  `ASSERT(ReqAndReadyImplyGrant_A, |req_i && ready_i |-> |gnt_o)
+  `JH_ASSERT(ReqAndReadyImplyGrant_A, |req_i && ready_i |-> |gnt_o)
   // A request and a sink that is ready imply a grant
-  `ASSERT(ReqImpliesValid_A, |req_i |-> valid_o)
+  `JH_ASSERT(ReqImpliesValid_A, |req_i |-> valid_o)
   // Both conditions above combined and reversed
-  `ASSERT(ReadyAndValidImplyGrant_A, ready_i && valid_o |-> |gnt_o)
+  `JH_ASSERT(ReadyAndValidImplyGrant_A, ready_i && valid_o |-> |gnt_o)
   // Both conditions above combined and reversed
-  `ASSERT(NoReadyValidNoGrant_A, !(ready_i || valid_o) |-> gnt_o == 0)
+  `JH_ASSERT(NoReadyValidNoGrant_A, !(ready_i || valid_o) |-> gnt_o == 0)
   // check index / grant correspond
-  `ASSERT(IndexIsCorrect_A, ready_i && valid_o |-> gnt_o[idx_o] && req_i[idx_o])
+  `JH_ASSERT(IndexIsCorrect_A, ready_i && valid_o |-> gnt_o[idx_o] && req_i[idx_o])
 
 if (EnDataPort) begin: gen_data_port_assertion
   // data flow
-  `ASSERT(DataFlow_A, ready_i && valid_o |-> data_o == data_i[idx_o])
+  `JH_ASSERT(DataFlow_A, ready_i && valid_o |-> data_o == data_i[idx_o])
 end
 
   // requests must stay asserted until they have been granted
-  `ASSUME(ReqStaysHighUntilGranted0_M, |req_i && !ready_i |=>
-      (req_i & $past(req_i)) == $past(req_i), clk_i, !rst_ni || !req_chk_i)
+  `JH_ASSUME(ReqStaysHighUntilGranted0_M, |req_i && !ready_i |=>
+      (req_i & $past(req_i)) == $past(req_i), clk_p, !rst_n || !req_chk_i)
   // check that the arbitration decision is held if the sink is not ready
-  `ASSERT(LockArbDecision_A, |req_i && !ready_i |=> idx_o == $past(idx_o),
-      clk_i, !rst_ni || !req_chk_i)
+  `JH_ASSERT(LockArbDecision_A, |req_i && !ready_i |=> idx_o == $past(idx_o),
+      clk_p, !rst_n || !req_chk_i)
 
 // FPV-only assertions with symbolic variables
 `ifdef FPV_ON
@@ -248,20 +248,20 @@ end
   bit ReqsAreStable;
 
   // constraints for symbolic variables
-  `ASSUME(KStable_M, ##1 $stable(k))
-  `ASSUME(KRange_M, k < N)
+  `JH_ASSUME(KStable_M, ##1 $stable(k))
+  `JH_ASSUME(KRange_M, k < N)
   // this is used enable checking for stable and unstable ready_i and req_i signals in the same run.
   // the symbolic variables act like a switch that the solver can trun on and off.
-  `ASSUME(ReadyIsStable_M, ##1 $stable(ReadyIsStable))
-  `ASSUME(ReqsAreStable_M, ##1 $stable(ReqsAreStable))
-  `ASSUME(ReadyStable_M, ##1 !ReadyIsStable || $stable(ready_i))
-  `ASSUME(ReqsStable_M, ##1 !ReqsAreStable || $stable(req_i))
+  `JH_ASSUME(ReadyIsStable_M, ##1 $stable(ReadyIsStable))
+  `JH_ASSUME(ReqsAreStable_M, ##1 $stable(ReqsAreStable))
+  `JH_ASSUME(ReadyStable_M, ##1 !ReadyIsStable || $stable(ready_i))
+  `JH_ASSUME(ReqsStable_M, ##1 !ReqsAreStable || $stable(req_i))
 
   // A grant implies a request
-  `ASSERT(GntImpliesReq_A, gnt_o[k] |-> req_i[k])
+  `JH_ASSERT(GntImpliesReq_A, gnt_o[k] |-> req_i[k])
 
   // if request and ready are constantly held at 1, we should eventually get a grant
-  `ASSERT(NoStarvation_A,
+  `JH_ASSERT(NoStarvation_A,
       ReqsAreStable && ReadyIsStable && ready_i && req_i[k] |->
       strong(##[0:$] gnt_o[k]))
 
@@ -269,13 +269,13 @@ end
   // be granted exactly once over a time window of N cycles for the arbiter to be fair.
   for (genvar n = 1; n <= N; n++) begin : gen_fairness
     integer gnt_cnt;
-    `ASSERT(Fairness_A,
+    `JH_ASSERT(Fairness_A,
         ReqsAreStable && ReadyIsStable && ready_i && req_i[k] &&
         $countones(req_i) == n |->
         ##n gnt_cnt == $past(gnt_cnt, n) + 1)
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_cnt
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_cnt
+      if (!rst_n) begin
         gnt_cnt <= 0;
       end else begin
         gnt_cnt <= gnt_cnt + gnt_o[k];
@@ -284,8 +284,8 @@ end
   end
 
   // requests must stay asserted until they have been granted
-  `ASSUME(ReqStaysHighUntilGranted1_M, req_i[k] && !gnt_o[k] |=>
-      req_i[k], clk_i, !rst_ni || !req_chk_i)
+  `JH_ASSUME(ReqStaysHighUntilGranted1_M, req_i[k] && !gnt_o[k] |=>
+      req_i[k], clk_p, !rst_n || !req_chk_i)
 `endif
 
-endmodule : prim_arbiter_tree
+endmodule : jh_prim_arbiter_tree

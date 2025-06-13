@@ -4,19 +4,19 @@
 //
 // Generic synchronous fifo for use in a variety of devices.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_fifo_sync #(
+module jh_prim_fifo_sync #(
   parameter int unsigned Width       = 16,
   parameter bit Pass                 = 1'b1, // if == 1 allow requests to pass through empty FIFO
   parameter int unsigned Depth       = 4,
   parameter bit OutputZeroIfEmpty    = 1'b1, // if == 1 always output 0 when FIFO is empty
   parameter bit Secure               = 1'b0, // use prim count for pointers
   // derived parameter
-  localparam int          DepthW     = prim_util_pkg::vbits(Depth+1)
+  localparam int          DepthW     = jh_prim_util_pkg::vbits(Depth+1)
 ) (
-  input                   clk_i,
-  input                   rst_ni,
+  input                   clk_p,
+  input                   rst_n,
   // synchronous clear / flush port
   input                   clr_i,
   // write port
@@ -36,7 +36,7 @@ module prim_fifo_sync #(
 
   // FIFO is in complete passthrough mode
   if (Depth == 0) begin : gen_passthru_fifo
-    `ASSERT_INIT(paramCheckPass, Pass == 1)
+    `JH_ASSERT_INIT(paramCheckPass, Pass == 1)
 
     assign depth_o = 1'b0; //output is meaningless
 
@@ -58,7 +58,7 @@ module prim_fifo_sync #(
   // Normal FIFO construction
   end else begin : gen_normal_fifo
 
-    localparam int unsigned PTRV_W    = prim_util_pkg::vbits(Depth);
+    localparam int unsigned PTRV_W    = jh_prim_util_pkg::vbits(Depth);
     localparam int unsigned PTR_WIDTH = PTRV_W+1;
 
     logic [PTR_WIDTH-1:0] fifo_wptr, fifo_rptr;
@@ -66,8 +66,8 @@ module prim_fifo_sync #(
 
     // module under reset flag
     logic under_rst;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         under_rst <= 1'b1;
       end else if (under_rst) begin
         under_rst <= ~under_rst;
@@ -99,13 +99,13 @@ module prim_fifo_sync #(
     assign full_o   = full;
     assign rvalid_o = ~empty & ~under_rst;
 
-    prim_fifo_sync_cnt #(
+    jh_prim_fifo_sync_cnt #(
       .Width(PTR_WIDTH),
       .Depth(Depth),
       .Secure(Secure)
     ) u_fifo_cnt (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .clr_i,
       .incr_wptr_i(fifo_incr_wptr),
       .incr_rptr_i(fifo_incr_rptr),
@@ -114,8 +114,8 @@ module prim_fifo_sync #(
       .err_o
     );
 
-    //always_ff @(posedge clk_i or negedge rst_ni) begin
-    //  if (!rst_ni) begin
+    //always_ff @(posedge clk_p or negedge rst_n) begin
+    //  if (!rst_n) begin
     //    fifo_wptr <= {(PTR_WIDTH){1'b0}};
     //  end else if (clr_i) begin
     //    fifo_wptr <= {(PTR_WIDTH){1'b0}};
@@ -128,8 +128,8 @@ module prim_fifo_sync #(
     //  end
     //end
     //
-    //always_ff @(posedge clk_i or negedge rst_ni) begin
-    //  if (!rst_ni) begin
+    //always_ff @(posedge clk_p or negedge rst_n) begin
+    //  if (!rst_n) begin
     //    fifo_rptr <= {(PTR_WIDTH){1'b0}};
     //  end else if (clr_i) begin
     //    fifo_rptr <= {(PTR_WIDTH){1'b0}};
@@ -153,7 +153,7 @@ module prim_fifo_sync #(
     if (Depth == 1) begin : gen_depth_eq1
       assign storage_rdata = storage[0];
 
-      always_ff @(posedge clk_i)
+      always_ff @(posedge clk_p)
         if (fifo_incr_wptr) begin
           storage[0] <= wdata_i;
         end
@@ -161,7 +161,7 @@ module prim_fifo_sync #(
     end else begin : gen_depth_gt1
       assign storage_rdata = storage[fifo_rptr[PTR_WIDTH-2:0]];
 
-      always_ff @(posedge clk_i)
+      always_ff @(posedge clk_p)
         if (fifo_incr_wptr) begin
           storage[fifo_wptr[PTR_WIDTH-2:0]] <= wdata_i;
         end
@@ -182,7 +182,7 @@ module prim_fifo_sync #(
       assign rdata_o = rdata_int;
     end
 
-    `ASSERT(depthShallNotExceedParamDepth, !empty |-> depth_o <= DepthW'(Depth))
+    `JH_ASSERT(depthShallNotExceedParamDepth, !empty |-> depth_o <= DepthW'(Depth))
   end // block: gen_normal_fifo
 
 
@@ -190,9 +190,9 @@ module prim_fifo_sync #(
   // Known Assertions //
   //////////////////////
 
-  `ASSERT(DataKnown_A, rvalid_o |-> !$isunknown(rdata_o))
-  `ASSERT_KNOWN(DepthKnown_A, depth_o)
-  `ASSERT_KNOWN(RvalidKnown_A, rvalid_o)
-  `ASSERT_KNOWN(WreadyKnown_A, wready_o)
+  `JH_ASSERT(DataKnown_A, rvalid_o |-> !$isunknown(rdata_o))
+  `JH_ASSERT_KNOWN(DepthKnown_A, depth_o)
+  `JH_ASSERT_KNOWN(RvalidKnown_A, rvalid_o)
+  `JH_ASSERT_KNOWN(WreadyKnown_A, wready_o)
 
 endmodule

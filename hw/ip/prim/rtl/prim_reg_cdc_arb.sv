@@ -4,7 +4,7 @@
 //
 // Component handling register CDC
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
 // There are three handling scenarios.
 // 1. The register can only be updated by software.
@@ -12,7 +12,7 @@
 // 3. The register can only be updated by hardware.
 //
 // For the first scenario, hardware updates are completely ignored.
-// The software facing register (`src_q` in prim_reg_cdc) simply reflects
+// The software facing register (`src_q` in jh_prim_reg_cdc) simply reflects
 // the value affected by software.  Since there is no possibility the
 // register value can change otherwise, there is no need to sample or
 // do any other coordination between the two domains. In this case,
@@ -49,7 +49,7 @@
 // is that of the 4 cases identified, only case 2 can happen since there is never a
 // software initiated update.
 
-module prim_reg_cdc_arb #(
+module jh_prim_reg_cdc_arb #(
   parameter int DataWidth = 32,
   parameter logic [DataWidth-1:0] ResetVal = 32'h0,
   parameter bit DstWrReq = 0
@@ -63,9 +63,9 @@ module prim_reg_cdc_arb #(
   // destination side requesting a source side update after
   // after hw update
   output logic src_update_o,
-  // input request from prim_reg_cdc
+  // input request from jh_prim_reg_cdc
   input dst_req_i,
-  // output request to prim_subreg
+  // output request to jh_prim_subreg
   output logic dst_req_o,
   input dst_update_i,
   // ds allows us to sample the destination domain register
@@ -142,7 +142,7 @@ module prim_reg_cdc_arb #(
     // Which type of transaction is being ack'd back?
     // 0 - software initiated request
     // 1 - hardware initiated request
-    // The id information is used by prim_reg_cdc to disambiguate
+    // The id information is used by jh_prim_reg_cdc to disambiguate
     // simultaneous updates from software and hardware.
     // See scenario 2 case 3 for an example of how this is handled.
     always_ff @(posedge clk_dst_i or negedge rst_dst_ni) begin
@@ -161,18 +161,18 @@ module prim_reg_cdc_arb #(
 
     // if a destination update is received when the system is idle and there is no
     // software side request, hw update must be selected.
-    `ASSERT(DstUpdateReqCheck_A, ##1 dst_update_i & !dst_req & !busy |=> id_q == SelHwReq,
+    `JH_ASSERT(DstUpdateReqCheck_A, ##1 dst_update_i & !dst_req & !busy |=> id_q == SelHwReq,
       clk_dst_i, !rst_dst_ni)
 
     // if hw select was chosen, then it must be the case there was a destination update
     // indication or there was a difference between the transit register and the
     // latest incoming value.
-    `ASSERT(HwIdSelCheck_A, $rose(id_q == SelHwReq) |-> $past(dst_update_i, 1) ||
+    `JH_ASSERT(HwIdSelCheck_A, $rose(id_q == SelHwReq) |-> $past(dst_update_i, 1) ||
       $past(dst_lat_q, 1),
       clk_dst_i, !rst_dst_ni)
 
 
-    // send out prim_subreg request only when proceeding
+    // send out jh_prim_subreg request only when proceeding
     // with software request
     assign dst_req_o = ~busy & dst_req;
 
@@ -221,7 +221,7 @@ module prim_reg_cdc_arb #(
 
     assign dst_update_req = dst_hold_req | dst_lat_d | dst_lat_q;
     logic src_req;
-    prim_sync_reqack u_dst_update_sync (
+    jh_prim_sync_reqack u_dst_update_sync (
       .clk_src_i(clk_dst_i),
       .rst_src_ni(rst_dst_ni),
       .clk_dst_i(clk_src_i),
@@ -238,7 +238,7 @@ module prim_reg_cdc_arb #(
     assign src_update_o = src_req & (id_q == SelHwReq);
 
     // once hardware makes an update request, we must eventually see an update pulse
-    `ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> s_eventually(src_update_o),
+    `JH_ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> s_eventually(src_update_o),
       clk_src_i, !rst_src_ni)
 
     `ifdef INC_ASSERT
@@ -254,7 +254,7 @@ module prim_reg_cdc_arb #(
       end
 
      // once hardware makes an update request, we must eventually see an update pulse
-     `ASSERT(UpdateTimeout_A, $rose(async_flag) |-> s_eventually(src_update_o),
+     `JH_ASSERT(UpdateTimeout_A, $rose(async_flag) |-> s_eventually(src_update_o),
        clk_src_i, !rst_src_ni)
     `endif
 
@@ -270,7 +270,7 @@ module prim_reg_cdc_arb #(
     // since there are no hw transactions, src_update_o is always '0
     assign src_update_o = '0;
 
-    prim_pulse_sync u_dst_to_src_ack (
+    jh_prim_pulse_sync u_dst_to_src_ack (
       .clk_src_i(clk_dst_i),
       .rst_src_ni(rst_dst_ni),
       .clk_dst_i(clk_src_i),

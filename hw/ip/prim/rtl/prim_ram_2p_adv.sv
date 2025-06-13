@@ -13,9 +13,9 @@
 // Note that the write mask needs to be per Byte if parity is enabled. If ECC is enabled, the write
 // mask cannot be used and has to be tied to {Width{1'b1}}.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_ram_2p_adv import prim_ram_2p_pkg::*; #(
+module jh_prim_ram_2p_adv import jh_prim_ram_2p_pkg::*; #(
   parameter  int Depth                = 512,
   parameter  int Width                = 32,
   parameter  int DataBitsPerMask      = 1,  // Number of data bits per bit of write mask
@@ -32,10 +32,10 @@ module prim_ram_2p_adv import prim_ram_2p_pkg::*; #(
   // since this results in a more compact and faster implementation.
   parameter bit HammingECC            = 0,
 
-  localparam int Aw                   = prim_util_pkg::vbits(Depth)
+  localparam int Aw                   = jh_prim_util_pkg::vbits(Depth)
 ) (
-  input                    clk_i,
-  input                    rst_ni,
+  input                    clk_p,
+  input                    rst_n,
 
   input                    a_req_i,
   input                    a_write_i,
@@ -58,7 +58,7 @@ module prim_ram_2p_adv import prim_ram_2p_pkg::*; #(
   input ram_2p_cfg_t       cfg_i
 );
 
-  prim_ram_2p_async_adv #(
+  jh_prim_ram_2p_async_adv #(
     .Depth               (Depth),
     .Width               (Width),
     .DataBitsPerMask     (DataBitsPerMask),
@@ -69,10 +69,10 @@ module prim_ram_2p_adv import prim_ram_2p_pkg::*; #(
     .EnableOutputPipeline(EnableOutputPipeline),
     .HammingECC          (HammingECC)
   ) i_prim_ram_2p_async_adv (
-    .clk_a_i(clk_i),
-    .rst_a_ni(rst_ni),
-    .clk_b_i(clk_i),
-    .rst_b_ni(rst_ni),
+    .clk_a_i(clk_p),
+    .rst_a_ni(rst_n),
+    .clk_b_i(clk_p),
+    .rst_b_ni(rst_n),
     .a_req_i,
     .a_write_i,
     .a_addr_i,
@@ -92,4 +92,4 @@ module prim_ram_2p_adv import prim_ram_2p_pkg::*; #(
     .cfg_i
   );
 
-endmodule : prim_ram_2p_adv
+endmodule : jh_prim_ram_2p_adv

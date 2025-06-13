@@ -9,11 +9,11 @@
 //   DW:          Data width
 //   DataPort:    Set to 1 to enable the data port. Otherwise that port will be ignored.
 //
-// See also: prim_arbiter_ppc, prim_arbiter_tree
+// See also: jh_prim_arbiter_ppc, jh_prim_arbiter_tree
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_arbiter_fixed #(
+module jh_prim_arbiter_fixed #(
   parameter int N   = 8,
   parameter int DW  = 32,
 
@@ -25,8 +25,8 @@ module prim_arbiter_fixed #(
   localparam int IdxW = $clog2(N)
 ) (
   // used for assertions only
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   input        [ N-1:0]    req_i,
   input        [DW-1:0]    data_i [N],
@@ -38,7 +38,7 @@ module prim_arbiter_fixed #(
   input                    ready_i
 );
 
-  `ASSERT_INIT(CheckNGreaterZero_A, N > 0)
+  `JH_ASSERT_INIT(CheckNGreaterZero_A, N > 0)
 
   // this case is basically just a bypass
   if (N == 1) begin : gen_degenerate_case
@@ -138,33 +138,33 @@ module prim_arbiter_fixed #(
 
   // KNOWN assertions on outputs, except for data as that may be partially X in simulation
   // e.g. when used on a BUS
-  `ASSERT_KNOWN(ValidKnown_A, valid_o)
-  `ASSERT_KNOWN(GrantKnown_A, gnt_o)
-  `ASSERT_KNOWN(IdxKnown_A, idx_o)
+  `JH_ASSERT_KNOWN(ValidKnown_A, valid_o)
+  `JH_ASSERT_KNOWN(GrantKnown_A, gnt_o)
+  `JH_ASSERT_KNOWN(IdxKnown_A, idx_o)
 
   // Make sure no higher prio req is asserted
-  `ASSERT(Priority_A, |req_i |-> req_i[idx_o] && (((N'(1'b1) << idx_o) - 1'b1) & req_i) == '0)
+  `JH_ASSERT(Priority_A, |req_i |-> req_i[idx_o] && (((N'(1'b1) << idx_o) - 1'b1) & req_i) == '0)
 
   // we can only grant one requestor at a time
-  `ASSERT(CheckHotOne_A, $onehot0(gnt_o))
+  `JH_ASSERT(CheckHotOne_A, $onehot0(gnt_o))
   // A grant implies that the sink is ready
-  `ASSERT(GntImpliesReady_A, |gnt_o |-> ready_i)
+  `JH_ASSERT(GntImpliesReady_A, |gnt_o |-> ready_i)
   // A grant implies that the arbiter asserts valid as well
-  `ASSERT(GntImpliesValid_A, |gnt_o |-> valid_o)
+  `JH_ASSERT(GntImpliesValid_A, |gnt_o |-> valid_o)
   // A request and a sink that is ready imply a grant
-  `ASSERT(ReqAndReadyImplyGrant_A, |req_i && ready_i |-> |gnt_o)
+  `JH_ASSERT(ReqAndReadyImplyGrant_A, |req_i && ready_i |-> |gnt_o)
   // A request and a sink that is ready imply a grant
-  `ASSERT(ReqImpliesValid_A, |req_i |-> valid_o)
+  `JH_ASSERT(ReqImpliesValid_A, |req_i |-> valid_o)
   // Both conditions above combined and reversed
-  `ASSERT(ReadyAndValidImplyGrant_A, ready_i && valid_o |-> |gnt_o)
+  `JH_ASSERT(ReadyAndValidImplyGrant_A, ready_i && valid_o |-> |gnt_o)
   // Both conditions above combined and reversed
-  `ASSERT(NoReadyValidNoGrant_A, !(ready_i || valid_o) |-> gnt_o == 0)
+  `JH_ASSERT(NoReadyValidNoGrant_A, !(ready_i || valid_o) |-> gnt_o == 0)
   // check index / grant correspond
-  `ASSERT(IndexIsCorrect_A, ready_i && valid_o |-> gnt_o[idx_o] && req_i[idx_o])
+  `JH_ASSERT(IndexIsCorrect_A, ready_i && valid_o |-> gnt_o[idx_o] && req_i[idx_o])
 
 if (EnDataPort) begin: gen_data_port_assertion
   // data flow
-  `ASSERT(DataFlow_A, ready_i && valid_o |-> data_o == data_i[idx_o])
+  `JH_ASSERT(DataFlow_A, ready_i && valid_o |-> data_o == data_i[idx_o])
 end
 
-endmodule : prim_arbiter_fixed
+endmodule : jh_prim_arbiter_fixed

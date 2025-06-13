@@ -4,10 +4,10 @@
 //
 // Combine InW data and write to OutW data if packed to full word or stop signal
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
 // ICEBOX(#12958): Revise to send out the empty status.
-module prim_packer #(
+module jh_prim_packer #(
   parameter int unsigned InW  = 32,
   parameter int unsigned OutW = 32,
 
@@ -17,8 +17,8 @@ module prim_packer #(
   // Turn on protect against FI for the pos variable
   parameter bit EnProtection = 1'b 0
 ) (
-  input clk_i ,
-  input rst_ni,
+  input clk_p ,
+  input rst_n,
 
   input                   valid_i,
   input        [InW-1:0]  data_i,
@@ -41,7 +41,7 @@ module prim_packer #(
   localparam int unsigned Width    = InW + OutW;  // storage width
   localparam int unsigned ConcatW  = Width + InW; // Input concatenated width
   localparam int unsigned PtrW     = $clog2(ConcatW+1);
-  localparam int unsigned IdxW     = prim_util_pkg::vbits(InW);
+  localparam int unsigned IdxW     = jh_prim_util_pkg::vbits(InW);
   localparam int unsigned OnesCntW = $clog2(InW+1);
 
   logic valid_next, ready_next;
@@ -86,8 +86,8 @@ module prim_packer #(
       endcase
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         pos_q <= '0;
       end else if (flush_done) begin
         pos_q <= '0;
@@ -126,12 +126,12 @@ module prim_packer #(
     end : cnt_set_logic
 
 
-    prim_count #(
+    jh_prim_count #(
       .Width      (PtrW),
       .ResetValue ('0  )
     ) u_pos (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
 
       .clr_i      (flush_done),
 
@@ -209,8 +209,8 @@ module prim_packer #(
   end
 
   // Store the data temporary if it doesn't exceed OutW
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       stored_data <= '0;
       stored_mask <= '0;
     end else if (flush_done) begin
@@ -230,8 +230,8 @@ module prim_packer #(
   } flush_st_e;
   flush_st_e flush_st, flush_st_next;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       flush_st <= FlushIdle;
     end else begin
       flush_st <= flush_st_next;
@@ -305,46 +305,46 @@ module prim_packer #(
   // e.g: 0011100 --> OK
   //      0100011 --> Not OK
   if (InW > 1) begin : gen_mask_assert
-    `ASSUME(ContiguousOnesMask_M,
+    `JH_ASSUME(ContiguousOnesMask_M,
             valid_i |-> $countones(mask_i ^ {mask_i[InW-2:0],1'b0}) <= 2)
   end
 
   // Flush and Write Enable cannot be asserted same time
-  `ASSUME(ExFlushValid_M, flush_i |-> !valid_i)
+  `JH_ASSUME(ExFlushValid_M, flush_i |-> !valid_i)
 
   // While in flush state, new request shouldn't come
-  `ASSUME(ValidIDeassertedOnFlush_M,
+  `JH_ASSUME(ValidIDeassertedOnFlush_M,
           flush_st == FlushSend |-> $stable(valid_i))
 
   // If not acked, input port keeps asserting valid and data
-  `ASSUME(DataIStable_M,
+  `JH_ASSUME(DataIStable_M,
           ##1 valid_i && $past(valid_i) && !$past(ready_o)
           |-> $stable(data_i) && $stable(mask_i))
 
-  `ASSERT(FlushFollowedByDone_A,
+  `JH_ASSERT(FlushFollowedByDone_A,
           ##1 $rose(flush_i) && !flush_done_o |-> !flush_done_o [*0:$] ##1 flush_done_o)
 
   // If not acked, valid_o should keep asserting
-  `ASSERT(ValidOPairedWidthReadyI_A,
+  `JH_ASSERT(ValidOPairedWidthReadyI_A,
           valid_o && !ready_i |=> valid_o)
 
   // If stored data is greater than the output width, valid should be asserted
-  `ASSERT(ValidOAssertedForStoredDataGTEOutW_A,
+  `JH_ASSERT(ValidOAssertedForStoredDataGTEOutW_A,
           ($countones(stored_mask) >= OutW) |-> valid_o)
 
   // If output port doesn't accept the data, the data should be stable
-  `ASSERT(DataOStableWhenPending_A,
+  `JH_ASSERT(DataOStableWhenPending_A,
           ##1 valid_o && $past(valid_o)
           && !$past(ready_i) |-> $stable(data_o))
 
   // If input data & stored data are greater than OutW, remained should be stored
-  `ASSERT(ExcessiveDataStored_A,
+  `JH_ASSERT(ExcessiveDataStored_A,
           ack_in && ack_out && (($countones(mask_i) + $countones(stored_mask)) > OutW)
           |=> (($past(data_i) &  $past(mask_i)) >>
                ($past(lod_idx)+OutW-$countones($past(stored_mask))))
                == stored_data)
 
-  `ASSERT(ExcessiveMaskStored_A,
+  `JH_ASSERT(ExcessiveMaskStored_A,
           ack_in && ack_out && (($countones(mask_i) + $countones(stored_mask)) > OutW)
           |=> ($past(mask_i) >>
                ($past(lod_idx)+OutW-$countones($past(stored_mask))))
@@ -352,17 +352,17 @@ module prim_packer #(
 
   // Assertions for byte hint enabled
   if (HintByteData != 0) begin : g_byte_assert
-    `ASSERT_INIT(InputDividedBy8_A,  InW  % 8 == 0)
-    `ASSERT_INIT(OutputDividedBy8_A, OutW % 8 == 0)
+    `JH_ASSERT_INIT(InputDividedBy8_A,  InW  % 8 == 0)
+    `JH_ASSERT_INIT(OutputDividedBy8_A, OutW % 8 == 0)
 
     // Masking[8*i+:8] should be all zero or all one
     for (genvar i = 0 ; i < InW/8 ; i++) begin : g_byte_input_masking
-      `ASSERT(InputMaskContiguous_A,
+      `JH_ASSERT(InputMaskContiguous_A,
               valid_i |-> (|mask_i[8*i+:8] == 1'b 0)
                        || (&mask_i[8*i+:8] == 1'b 1))
     end
     for (genvar i = 0 ; i < OutW/8 ; i++) begin : g_byte_output_masking
-      `ASSERT(OutputMaskContiguous_A,
+      `JH_ASSERT(OutputMaskContiguous_A,
               valid_o |-> (|mask_o[8*i+:8] == 1'b 0)
                        || (&mask_o[8*i+:8] == 1'b 1))
     end

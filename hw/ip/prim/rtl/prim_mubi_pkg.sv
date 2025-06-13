@@ -10,9 +10,9 @@
 // This package defines common multibit signal types, active high and active low values and
 // the corresponding functions to test whether the values are set or not.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-package prim_mubi_pkg;
+package jh_prim_mubi_pkg;
 
   //////////////////////////////////////////////
   // 4 Bit Multibit Type and Functions //
@@ -25,7 +25,7 @@ package prim_mubi_pkg;
   } mubi4_t;
 
   // This is a prerequisite for the multibit functions below to work.
-  `ASSERT_STATIC_IN_PACKAGE(CheckMuBi4ValsComplementary_A, MuBi4True == ~MuBi4False)
+  `JH_ASSERT_STATIC_IN_PACKAGE(CheckMuBi4ValsComplementary_A, MuBi4True == ~MuBi4False)
 
   // Test whether the value is supplied is one of the valid enumerations
   function automatic logic mubi4_test_invalid(mubi4_t val);
@@ -157,7 +157,7 @@ package prim_mubi_pkg;
   } mubi8_t;
 
   // This is a prerequisite for the multibit functions below to work.
-  `ASSERT_STATIC_IN_PACKAGE(CheckMuBi8ValsComplementary_A, MuBi8True == ~MuBi8False)
+  `JH_ASSERT_STATIC_IN_PACKAGE(CheckMuBi8ValsComplementary_A, MuBi8True == ~MuBi8False)
 
   // Test whether the value is supplied is one of the valid enumerations
   function automatic logic mubi8_test_invalid(mubi8_t val);
@@ -289,7 +289,7 @@ package prim_mubi_pkg;
   } mubi12_t;
 
   // This is a prerequisite for the multibit functions below to work.
-  `ASSERT_STATIC_IN_PACKAGE(CheckMuBi12ValsComplementary_A, MuBi12True == ~MuBi12False)
+  `JH_ASSERT_STATIC_IN_PACKAGE(CheckMuBi12ValsComplementary_A, MuBi12True == ~MuBi12False)
 
   // Test whether the value is supplied is one of the valid enumerations
   function automatic logic mubi12_test_invalid(mubi12_t val);
@@ -421,7 +421,7 @@ package prim_mubi_pkg;
   } mubi16_t;
 
   // This is a prerequisite for the multibit functions below to work.
-  `ASSERT_STATIC_IN_PACKAGE(CheckMuBi16ValsComplementary_A, MuBi16True == ~MuBi16False)
+  `JH_ASSERT_STATIC_IN_PACKAGE(CheckMuBi16ValsComplementary_A, MuBi16True == ~MuBi16False)
 
   // Test whether the value is supplied is one of the valid enumerations
   function automatic logic mubi16_test_invalid(mubi16_t val);
@@ -542,4 +542,4 @@ package prim_mubi_pkg;
     return mubi16_and(a, b, MuBi16False);
   endfunction : mubi16_and_lo
 
-endpackage : prim_mubi_pkg
+endpackage : jh_prim_mubi_pkg

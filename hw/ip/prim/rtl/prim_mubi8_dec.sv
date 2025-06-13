@@ -9,10 +9,10 @@
 //
 // Decoder for multibit control signals with additional input buffers.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_mubi8_dec
-  import prim_mubi_pkg::*;
+module jh_prim_mubi8_dec
+  import jh_prim_mubi_pkg::*;
 #(
   parameter bit TestTrue = 1,
   parameter bit TestStrict = 1
@@ -27,7 +27,7 @@ assign mubi = MuBi8Width'(mubi_i);
 // The buffer cells have a don't touch constraint on them
 // such that synthesis tools won't collapse them
 for (genvar k = 0; k < MuBi8Width; k++) begin : gen_bits
-  prim_buf u_prim_buf (
+  jh_prim_buf u_prim_buf (
     .in_i  ( mubi[k]     ),
     .out_o ( mubi_out[k] )
   );
@@ -42,7 +42,7 @@ end else if (!TestTrue && TestStrict) begin : gen_test_false_strict
 end else if (!TestTrue && !TestStrict) begin : gen_test_false_loose
   assign mubi_dec_o = mubi8_test_false_loose(mubi8_t'(mubi_out));
 end else begin : gen_unknown_config
-  `ASSERT_INIT(UnknownConfig_A, 0)
+  `JH_ASSERT_INIT(UnknownConfig_A, 0)
 end
 
-endmodule : prim_mubi8_dec
+endmodule : jh_prim_mubi8_dec

@@ -4,7 +4,7 @@
 //
 // This is a draft implementation of a low-latency memory scrambling mechanism.
 //
-// The module is implemented as a primitive, in the same spirit as similar prim_ram_1p_adv wrappers.
+// The module is implemented as a primitive, in the same spirit as similar jh_prim_ram_1p_adv wrappers.
 // Hence, it can be conveniently instantiated by comportable IPs (such as OTBN) or in top_earlgrey
 // for the main system memory.
 //
@@ -19,11 +19,11 @@
 // that nonce, the address mapping is not fully baked into RTL and can be changed at runtime as
 // well.
 //
-// See also: prim_cipher_pkg, prim_prince
+// See also: jh_prim_cipher_pkg, jh_prim_prince
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
+module jh_prim_ram_1p_scr import jh_prim_ram_1p_pkg::*; #(
   parameter  int Depth               = 16*1024, // Needs to be a power of 2 if NumAddrScrRounds > 0.
   parameter  int Width               = 32, // Needs to be byte aligned if byte parity is enabled.
   parameter  int DataBitsPerMask     = 8, // Needs to be set to 8 in case of byte parity.
@@ -46,7 +46,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   // a unique keystream is generated for the full data width.
   parameter  bit ReplicateKeyStream  = 1'b0,
   // Derived parameters
-  localparam int AddrWidth           = prim_util_pkg::vbits(Depth),
+  localparam int AddrWidth           = jh_prim_util_pkg::vbits(Depth),
   // Depending on the data width, we need to instantiate multiple parallel cipher primitives to
   // create a keystream that is wide enough (PRINCE has a block size of 64bit)
   localparam int NumParScr           = (ReplicateKeyStream) ? 1 : (Width + 63) / 64,
@@ -57,8 +57,8 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   // Each 64 bit scrambling primitive requires a 64bit IV
   localparam int NonceWidth          = 64 * NumParScr
 ) (
-  input                             clk_i,
-  input                             rst_ni,
+  input                             clk_p,
+  input                             rst_n,
 
   // Key interface. Memory requests will not be granted if key_valid is set to 0.
   input                             key_valid_i,
@@ -88,15 +88,15 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   //////////////////////
 
   // The depth needs to be a power of 2 in case address scrambling is turned on
-  `ASSERT_INIT(DepthPow2Check_A, NumAddrScrRounds <= '0 || 2**$clog2(Depth) == Depth)
-  `ASSERT_INIT(DiffWidthMinimum_A, DiffWidth >= 4)
-  `ASSERT_INIT(DiffWidthWithParity_A, EnableParity && (DiffWidth == 8) || !EnableParity)
+  `JH_ASSERT_INIT(DepthPow2Check_A, NumAddrScrRounds <= '0 || 2**$clog2(Depth) == Depth)
+  `JH_ASSERT_INIT(DiffWidthMinimum_A, DiffWidth >= 4)
+  `JH_ASSERT_INIT(DiffWidthWithParity_A, EnableParity && (DiffWidth == 8) || !EnableParity)
 
   /////////////////////////////////////////
   // Pending Write and Address Registers //
   /////////////////////////////////////////
 
-  // Writes are delayed by one cycle, such the same keystream generation primitive (prim_prince) can
+  // Writes are delayed by one cycle, such the same keystream generation primitive (jh_prim_prince) can
   // be reused among reads and writes. Note however that with this arrangement, we have to introduce
   // a mechanism to hold a pending write transaction in cases where that transaction is immediately
   // followed by a read. The pending write transaction is written to memory as soon as there is no
@@ -120,7 +120,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   // Macro requests and write strobe
   // The macro operation is silenced if an integrity error is seen
   logic intg_error_buf, intg_error_w_q;
-  prim_buf u_intg_error (
+  jh_prim_buf u_intg_error (
     .in_i(intg_error_i),
     .out_o(intg_error_buf)
   );
@@ -146,7 +146,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
     logic [AddrWidth-1:0] addr_scr_nonce;
     assign addr_scr_nonce = nonce_i[NonceWidth - AddrWidth +: AddrWidth];
 
-    prim_subst_perm #(
+    jh_prim_subst_perm #(
       .DataWidth ( AddrWidth        ),
       .NumRounds ( NumAddrScrRounds ),
       .Decrypt   ( 0                )
@@ -180,7 +180,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   for (genvar k = 0; k < NumParScr; k++) begin : gen_par_scr
     assign data_scr_nonce[k] = nonce_i[k * DataNonceWidth +: DataNonceWidth];
 
-    prim_prince #(
+    jh_prim_prince #(
       .DataWidth      (64),
       .KeyWidth       (128),
       .NumRoundsHalf  (NumPrinceRoundsHalf),
@@ -188,8 +188,8 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
       .HalfwayDataReg (1'b1), // instantiate a register halfway in the primitive
       .HalfwayKeyReg  (1'b0)  // no need to instantiate a key register as the key remains static
     ) u_prim_prince (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .valid_i ( gnt_o ),
       // The IV is composed of a nonce and the row address
       //.data_i  ( {nonce_i[k * (64 - AddrWidth) +: (64 - AddrWidth)], addr} ),
@@ -243,7 +243,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
                        keystream_repl[k*DiffWidth +: LocalWidth];
 
     // Byte aligned diffusion using a substitution / permutation network
-    prim_subst_perm #(
+    jh_prim_subst_perm #(
       .DataWidth ( LocalWidth       ),
       .NumRounds ( NumDiffRounds ),
       .Decrypt   ( 0                )
@@ -258,7 +258,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
     // SRAM and the byte diffusion.
     // Reverse diffusion first
     logic [LocalWidth-1:0] rdata_xor;
-    prim_subst_perm #(
+    jh_prim_subst_perm #(
       .DataWidth ( LocalWidth       ),
       .NumRounds ( NumDiffRounds ),
       .Decrypt   ( 1                )
@@ -336,8 +336,8 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   // Registers //
   ///////////////
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_wdata_buf
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_wdata_buf
+    if (!rst_n) begin
       write_pending_q     <= 1'b0;
       addr_collision_q    <= 1'b0;
       rvalid_q            <= 1'b0;
@@ -375,7 +375,7 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
   // Memory Macro //
   //////////////////
 
-  prim_ram_1p_adv #(
+  jh_prim_ram_1p_adv #(
     .Depth(Depth),
     .Width(Width),
     .DataBitsPerMask(DataBitsPerMask),
@@ -384,8 +384,8 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
     .EnableInputPipeline(1'b0),
     .EnableOutputPipeline(1'b0)
   ) u_prim_ram_1p_adv (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .req_i    ( macro_req   ),
     .write_i  ( macro_write ),
     .addr_i   ( addr_mux    ),
@@ -397,6 +397,6 @@ module prim_ram_1p_scr import prim_ram_1p_pkg::*; #(
     .cfg_i
   );
 
-  `include "prim_util_get_scramble_params.svh"
+  `include "jh_prim_util_get_scramble_params.svh"
 
-endmodule : prim_ram_1p_scr
+endmodule : jh_prim_ram_1p_scr

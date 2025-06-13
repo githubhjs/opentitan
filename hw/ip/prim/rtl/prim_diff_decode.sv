@@ -13,16 +13,16 @@
 // the differential pair (i.e., when level changes on the diff pair are
 // sampled one cycle apart due to a timing skew between the two wires).
 //
-// See also: prim_alert_sender, prim_alert_receiver, alert_handler
+// See also: jh_prim_alert_sender, jh_prim_alert_receiver, alert_handler
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_diff_decode #(
+module jh_prim_diff_decode #(
   // enables additional synchronization logic
   parameter bit AsyncOn = 1'b0
 ) (
-  input        clk_i,
-  input        rst_ni,
+  input        clk_p,
+  input        rst_n,
   // input diff pair
   input        diff_pi,
   input        diff_ni,
@@ -51,22 +51,22 @@ module prim_diff_decode #(
     // 2 sync regs, one reg for edge detection
     logic diff_pq, diff_nq, diff_pd, diff_nd;
 
-    prim_flop_2sync #(
+    jh_prim_flop_2sync #(
       .Width(1),
       .ResetValue('0)
     ) i_sync_p (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i(diff_pi),
       .q_o(diff_pd)
     );
 
-    prim_flop_2sync #(
+    jh_prim_flop_2sync #(
       .Width(1),
       .ResetValue(1'b1)
     ) i_sync_n (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .d_i(diff_ni),
       .q_o(diff_nd)
     );
@@ -159,8 +159,8 @@ module prim_diff_decode #(
       endcase
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_sync_reg
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_sync_reg
+      if (!rst_n) begin
         state_q  <= IsStd;
         diff_pq  <= 1'b0;
         diff_nq  <= 1'b1;
@@ -193,8 +193,8 @@ module prim_diff_decode #(
     assign fall_o  = ( diff_pq & ~diff_pi) & ~sigint_o;
     assign event_o = rise_o | fall_o;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_edge_reg
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_edge_reg
+      if (!rst_n) begin
         diff_pq  <= 1'b0;
         level_q  <= 1'b0;
       end else begin
@@ -211,11 +211,11 @@ module prim_diff_decode #(
   // shared assertions
   // sigint -> level stays the same during sigint
   // $isunknown is needed to avoid false assertion in first clock cycle
-  `ASSERT(SigintLevelCheck_A, ##1 sigint_o |-> $stable(level_o))
+  `JH_ASSERT(SigintLevelCheck_A, ##1 sigint_o |-> $stable(level_o))
   // sigint -> no additional events asserted at output
-  `ASSERT(SigintEventCheck_A, sigint_o |-> !event_o)
-  `ASSERT(SigintRiseCheck_A,  sigint_o |-> !rise_o)
-  `ASSERT(SigintFallCheck_A,  sigint_o |-> !fall_o)
+  `JH_ASSERT(SigintEventCheck_A, sigint_o |-> !event_o)
+  `JH_ASSERT(SigintRiseCheck_A,  sigint_o |-> !rise_o)
+  `JH_ASSERT(SigintFallCheck_A,  sigint_o |-> !fall_o)
 
   if (AsyncOn) begin : gen_async_assert
 `ifdef INC_ASSERT
@@ -223,8 +223,8 @@ module prim_diff_decode #(
     // in this case we need to sample the input signals onto the local clock to avoid race
     // conditions between the RTL and assertion sampling in simulation.
     logic hlp_diff_pq, hlp_diff_nq;
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_edge_reg
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin : p_edge_reg
+      if (!rst_n) begin
         hlp_diff_pq  <= 1'b0;
         hlp_diff_nq  <= 1'b1;
       end else begin
@@ -235,24 +235,24 @@ module prim_diff_decode #(
 
   `ifndef FPV_ALERT_NO_SIGINT_ERR
     // correctly detect sigint issue (only one transition cycle of permissible due to skew)
-    `ASSERT(SigintCheck0_A, hlp_diff_pq == hlp_diff_nq [*2] |-> ##[0:1] sigint_o)
+    `JH_ASSERT(SigintCheck0_A, hlp_diff_pq == hlp_diff_nq [*2] |-> ##[0:1] sigint_o)
     // the synchronizer adds 2 cycles of latency with respect to input signals.
-    `ASSERT(SigintCheck1_A,
+    `JH_ASSERT(SigintCheck1_A,
         ##1 (hlp_diff_pq ^ hlp_diff_nq) && $stable(hlp_diff_pq) && $stable(hlp_diff_nq) ##1
         $rose(hlp_diff_pq) && $stable(hlp_diff_nq) ##1 $stable(hlp_diff_pq) && $fell(hlp_diff_nq)
         |->
         ##1 rise_o)
-    `ASSERT(SigintCheck2_A,
+    `JH_ASSERT(SigintCheck2_A,
         ##1 (hlp_diff_pq ^ hlp_diff_nq) && $stable(hlp_diff_pq) && $stable(hlp_diff_nq) ##1
         $fell(hlp_diff_pq) && $stable(hlp_diff_nq) ##1 $stable(hlp_diff_pq) && $rose(hlp_diff_nq)
         |->
         ##1 fall_o)
-    `ASSERT(SigintCheck3_A,
+    `JH_ASSERT(SigintCheck3_A,
         ##1 (hlp_diff_pq ^ hlp_diff_nq) && $stable(hlp_diff_pq) && $stable(hlp_diff_nq) ##1
         $rose(hlp_diff_nq) && $stable(hlp_diff_pq) ##1 $stable(hlp_diff_nq) && $fell(hlp_diff_pq)
         |->
         ##1 fall_o)
-    `ASSERT(SigintCheck4_A,
+    `JH_ASSERT(SigintCheck4_A,
         ##1 (hlp_diff_pq ^ hlp_diff_nq) && $stable(hlp_diff_pq) && $stable(hlp_diff_nq) ##1
         $fell(hlp_diff_nq) && $stable(hlp_diff_pq) ##1 $stable(hlp_diff_nq) && $rose(hlp_diff_pq)
         |->
@@ -260,31 +260,31 @@ module prim_diff_decode #(
   `endif
 
     // correctly detect edges
-    `ASSERT(RiseCheck_A,  ##1 $rose(hlp_diff_pq)     && (hlp_diff_pq ^ hlp_diff_nq) |->
-        ##[1:2] rise_o,  clk_i, !rst_ni || sigint_o)
-    `ASSERT(FallCheck_A,  ##1 $fell(hlp_diff_pq)     && (hlp_diff_pq ^ hlp_diff_nq) |->
-        ##[1:2] fall_o,  clk_i, !rst_ni || sigint_o)
-    `ASSERT(EventCheck_A, ##1 $changed(hlp_diff_pq)  && (hlp_diff_pq ^ hlp_diff_nq) |->
-        ##[1:2] event_o, clk_i, !rst_ni || sigint_o)
+    `JH_ASSERT(RiseCheck_A,  ##1 $rose(hlp_diff_pq)     && (hlp_diff_pq ^ hlp_diff_nq) |->
+        ##[1:2] rise_o,  clk_p, !rst_n || sigint_o)
+    `JH_ASSERT(FallCheck_A,  ##1 $fell(hlp_diff_pq)     && (hlp_diff_pq ^ hlp_diff_nq) |->
+        ##[1:2] fall_o,  clk_p, !rst_n || sigint_o)
+    `JH_ASSERT(EventCheck_A, ##1 $changed(hlp_diff_pq)  && (hlp_diff_pq ^ hlp_diff_nq) |->
+        ##[1:2] event_o, clk_p, !rst_n || sigint_o)
     // correctly detect level
-    `ASSERT(LevelCheck0_A, !sigint_o && (hlp_diff_pq ^ hlp_diff_nq) [*3] |=>
+    `JH_ASSERT(LevelCheck0_A, !sigint_o && (hlp_diff_pq ^ hlp_diff_nq) [*3] |=>
         $past(hlp_diff_pq, 1) == level_o,
-        clk_i, !rst_ni || sigint_o)
+        clk_p, !rst_n || sigint_o)
 `endif
   end else begin : gen_sync_assert
     // assertions for synchronous case
 
   `ifndef FPV_ALERT_NO_SIGINT_ERR
     // correctly detect sigint issue
-    `ASSERT(SigintCheck_A, diff_pi == diff_ni |-> sigint_o)
+    `JH_ASSERT(SigintCheck_A, diff_pi == diff_ni |-> sigint_o)
   `endif
 
     // correctly detect edges
-    `ASSERT(RiseCheck_A,  ##1 $rose(diff_pi)    && (diff_pi ^ diff_ni) |->  rise_o)
-    `ASSERT(FallCheck_A,  ##1 $fell(diff_pi)    && (diff_pi ^ diff_ni) |->  fall_o)
-    `ASSERT(EventCheck_A, ##1 $changed(diff_pi) && (diff_pi ^ diff_ni) |-> event_o)
+    `JH_ASSERT(RiseCheck_A,  ##1 $rose(diff_pi)    && (diff_pi ^ diff_ni) |->  rise_o)
+    `JH_ASSERT(FallCheck_A,  ##1 $fell(diff_pi)    && (diff_pi ^ diff_ni) |->  fall_o)
+    `JH_ASSERT(EventCheck_A, ##1 $changed(diff_pi) && (diff_pi ^ diff_ni) |-> event_o)
     // correctly detect level
-    `ASSERT(LevelCheck_A, (diff_pi ^ diff_ni) |-> diff_pi == level_o)
+    `JH_ASSERT(LevelCheck_A, (diff_pi ^ diff_ni) |-> diff_pi == level_o)
   end
 
-endmodule : prim_diff_decode
+endmodule : jh_prim_diff_decode

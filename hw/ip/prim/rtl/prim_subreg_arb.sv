@@ -4,8 +4,8 @@
 //
 // Write enable and data arbitration logic for register slice conforming to Comportibility guide.
 
-module prim_subreg_arb
-  import prim_subreg_pkg::*;
+module jh_prim_subreg_arb
+  import jh_prim_subreg_pkg::*;
 #(
   parameter int         DW       = 32,
   parameter sw_access_e SwAccess = SwAccessRW

@@ -4,15 +4,15 @@
 //
 // Register slice conforming to Comportibility guide.
 
-module prim_subreg
-  import prim_subreg_pkg::*;
+module jh_prim_subreg
+  import jh_prim_subreg_pkg::*;
 #(
   parameter int            DW       = 32,
   parameter sw_access_e    SwAccess = SwAccessRW,
   parameter logic [DW-1:0] RESVAL   = '0    // reset value
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
 
   // From SW: valid for RW, WO, W1C, W1S, W0C, RC
   // In case of RC, Top connects Read Pulse to we
@@ -37,7 +37,7 @@ module prim_subreg
   logic          wr_en;
   logic [DW-1:0] wr_data;
 
-  prim_subreg_arb #(
+  jh_prim_subreg_arb #(
     .DW       ( DW       ),
     .SwAccess ( SwAccess )
   ) wr_en_data_arb (
@@ -50,8 +50,8 @@ module prim_subreg
     .wr_data
   );
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin
+    if (!rst_n) begin
       q <= RESVAL;
     end else if (wr_en) begin
       q <= wr_data;

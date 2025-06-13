@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-package prim_esc_pkg;
+package jh_prim_esc_pkg;
 
   typedef struct packed {
     logic esc_p;
@@ -20,4 +20,4 @@ package prim_esc_pkg;
   parameter esc_rx_t ESC_RX_DEFAULT = '{resp_p: 1'b0,
                                         resp_n: 1'b1};
 
-endpackage : prim_esc_pkg
+endpackage : jh_prim_esc_pkg

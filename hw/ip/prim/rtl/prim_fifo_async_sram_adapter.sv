@@ -4,9 +4,9 @@
 //
 // Generic Asynchronous SRAM FIFO (Dual port SRAM)
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_fifo_async_sram_adapter #(
+module jh_prim_fifo_async_sram_adapter #(
   parameter int unsigned Width = 32,
   parameter int unsigned Depth = 16,
 
@@ -137,11 +137,11 @@ module prim_fifo_async_sram_adapter #(
 
   assign w_wptr_gray_d = dec2gray(w_wptr_d);
 
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width (PtrW)
   ) u_sync_wptr_gray (
-    .clk_i  (clk_rd_i),
-    .rst_ni (rst_rd_ni),
+    .clk_p  (clk_rd_i),
+    .rst_n (rst_rd_ni),
     .d_i    (w_wptr_gray_q),
     .q_o    (r_wptr_gray)
   );
@@ -179,11 +179,11 @@ module prim_fifo_async_sram_adapter #(
 
   assign r_rptr_gray_d = dec2gray(r_rptr_d);
 
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width (PtrW)
   ) u_sync_rptr_gray (
-    .clk_i  (clk_wr_i),
-    .rst_ni (rst_wr_ni),
+    .clk_p  (clk_wr_i),
+    .rst_n (rst_wr_ni),
     .d_i    (r_rptr_gray_q),
     .q_o    (w_rptr_gray)
   );
@@ -338,7 +338,7 @@ module prim_fifo_async_sram_adapter #(
   // Function //
   //////////////
 
-  // dec2gray / gray2dec copied from prim_fifo_async.sv
+  // dec2gray / gray2dec copied from jh_prim_fifo_async.sv
   function automatic [PtrW-1:0] dec2gray(input logic [PtrW-1:0] decval);
     logic [PtrW-1:0] decval_sub;
     logic [PtrW-1:0] decval_in;
@@ -384,56 +384,56 @@ module prim_fifo_async_sram_adapter #(
   // Assertion //
   ///////////////
 
-  `ASSERT_INIT(ParamCheckDepth_A, (Depth == 2**$clog2(Depth)))
+  `JH_ASSERT_INIT(ParamCheckDepth_A, (Depth == 2**$clog2(Depth)))
 
   // Use FF if less than 4.
-  `ASSERT_INIT(MinDepth_A, Depth >= 4)
+  `JH_ASSERT_INIT(MinDepth_A, Depth >= 4)
 
   // SramDw greather than or equal to Width
-  `ASSERT_INIT(WidthMatch_A, SramDw >= Width)
+  `JH_ASSERT_INIT(WidthMatch_A, SramDw >= Width)
 
   // Not stored, Not read valid, but rptr_inc case is impossible
-  `ASSERT(RptrIncDataValid_A,
+  `JH_ASSERT(RptrIncDataValid_A,
           r_rptr_inc |-> stored || r_sram_rvalid_i,
           clk_rd_i, !rst_rd_ni)
-  `ASSERT(SramRvalid_A,
+  `JH_ASSERT(SramRvalid_A,
           r_sram_rvalid_i |-> !stored || r_rptr_inc,
           clk_rd_i, !rst_rd_ni)
 
   // FIFO interface
-  `ASSERT(NoWAckInFull_A, w_wptr_inc |-> !w_full,
+  `JH_ASSERT(NoWAckInFull_A, w_wptr_inc |-> !w_full,
           clk_wr_i, !rst_wr_ni)
 
-  `ASSERT(WptrIncrease_A,
+  `JH_ASSERT(WptrIncrease_A,
           w_wptr_inc |=> w_wptr_v == PtrVW'($past(w_wptr_v,2) + 1),
           clk_wr_i, !rst_wr_ni)
-  `ASSERT(WptrGrayOneBitAtATime_A,
+  `JH_ASSERT(WptrGrayOneBitAtATime_A,
           w_wptr_inc |=> $countones(w_wptr_gray_q ^ $past(w_wptr_gray_q,2)) == 1,
           clk_wr_i, !rst_wr_ni)
 
-  `ASSERT(NoRAckInEmpty_A, r_rptr_inc |-> !r_empty,
+  `JH_ASSERT(NoRAckInEmpty_A, r_rptr_inc |-> !r_empty,
           clk_rd_i, !rst_rd_ni)
 
-  `ASSERT(RptrIncrease_A,
+  `JH_ASSERT(RptrIncrease_A,
           r_rptr_inc |=> PtrVW'($past(r_rptr_v) + 1) == r_rptr_v,
           clk_rd_i, !rst_rd_ni)
-  `ASSERT(RptrGrayOneBitAtATime_A,
+  `JH_ASSERT(RptrGrayOneBitAtATime_A,
           r_rptr_inc |=> $countones(r_rptr_gray_q ^ $past(r_rptr_gray_q)) == 1,
           clk_rd_i, !rst_rd_ni)
 
   // SRAM interface
-  `ASSERT(WSramRvalid_A, !w_sram_rvalid_i, clk_wr_i, !rst_wr_ni)
-  `ASSUME_FPV(WSramRdataError_M, w_sram_rdata_i == '0 && w_sram_rerror_i == '0,
+  `JH_ASSERT(WSramRvalid_A, !w_sram_rvalid_i, clk_wr_i, !rst_wr_ni)
+  `JH_ASSUME_FPV(WSramRdataError_M, w_sram_rdata_i == '0 && w_sram_rerror_i == '0,
               clk_wr_i, !rst_wr_ni)
 
-  `ASSUME(RSramRvalidOneCycle_M,
+  `JH_ASSUME(RSramRvalidOneCycle_M,
           r_sram_req_o && r_sram_gnt_i |=> r_sram_rvalid_i,
           clk_rd_i, !rst_rd_ni)
-  `ASSUME_FPV(RErrorTied_M, r_sram_rerror_i == '0,
+  `JH_ASSUME_FPV(RErrorTied_M, r_sram_rerror_i == '0,
               clk_rd_i, !rst_rd_ni)
 
 
   // FPV coverage
   `COVER_FPV(WFull_C, w_full, clk_wr_i, !rst_wr_ni)
 
-endmodule : prim_fifo_async_sram_adapter
+endmodule : jh_prim_fifo_async_sram_adapter

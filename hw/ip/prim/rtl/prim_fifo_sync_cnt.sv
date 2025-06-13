@@ -4,15 +4,15 @@
 //
 // Generic synchronous fifo for use in a variety of devices.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_fifo_sync_cnt #(
+module jh_prim_fifo_sync_cnt #(
   parameter int Depth = 4,
   parameter int Width = 16,
   parameter bit Secure = 1'b0
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_p,
+  input rst_n,
   input clr_i,
   input incr_wptr_i,
   input incr_rptr_i,
@@ -34,11 +34,11 @@ module prim_fifo_sync_cnt #(
 
   if (Secure) begin : gen_secure_ptrs
     logic wptr_err;
-    prim_count #(
+    jh_prim_count #(
       .Width(Width)
     ) u_wptr (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .clr_i,
       .set_i(wptr_wrap),
       .set_cnt_i(wptr_wrap_cnt),
@@ -51,11 +51,11 @@ module prim_fifo_sync_cnt #(
     );
 
     logic rptr_err;
-    prim_count #(
+    jh_prim_count #(
       .Width(Width)
     ) u_rptr (
-      .clk_i,
-      .rst_ni,
+      .clk_p,
+      .rst_n,
       .clr_i,
       .set_i(rptr_wrap),
       .set_cnt_i(rptr_wrap_cnt),
@@ -70,8 +70,8 @@ module prim_fifo_sync_cnt #(
     assign err_o = wptr_err | rptr_err;
 
   end else begin : gen_normal_ptrs
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         wptr_o <= {(Width){1'b0}};
       end else if (clr_i) begin
         wptr_o <= {(Width){1'b0}};
@@ -82,8 +82,8 @@ module prim_fifo_sync_cnt #(
       end
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         rptr_o <= {(Width){1'b0}};
       end else if (clr_i) begin
         rptr_o <= {(Width){1'b0}};
@@ -99,4 +99,4 @@ module prim_fifo_sync_cnt #(
 
 
 
-endmodule // prim_fifo_sync_cnt
+endmodule // jh_prim_fifo_sync_cnt

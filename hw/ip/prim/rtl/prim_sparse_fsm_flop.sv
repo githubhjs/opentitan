@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_sparse_fsm_flop #(
+module jh_prim_sparse_fsm_flop #(
   parameter int               Width      = 1,
   parameter type              StateEnumT = logic [Width-1:0],
   parameter logic [Width-1:0] ResetValue = '0,
@@ -14,13 +14,13 @@ module prim_sparse_fsm_flop #(
 `ifdef SIMULATION
   ,
   // In case this parameter is set to a non-empty string, the
-  // prim_sparse_fsm_flop_if will also force the signal with this name
-  // in the parent module that instantiates prim_sparse_fsm_flop.
+  // jh_prim_sparse_fsm_flop_if will also force the signal with this name
+  // in the parent module that instantiates jh_prim_sparse_fsm_flop.
   parameter string            CustomForceName = ""
 `endif
 ) (
-  input             clk_i,
-  input             rst_ni,
+  input             clk_p,
+  input             rst_n,
   input  StateEnumT state_i,
   output StateEnumT state_o
 );
@@ -28,12 +28,12 @@ module prim_sparse_fsm_flop #(
   logic unused_err_o;
 
   logic [Width-1:0] state_raw;
-  prim_flop #(
+  jh_prim_flop #(
     .Width(Width),
     .ResetValue(ResetValue)
   ) u_state_flop (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i(state_i),
     .q_o(state_raw)
   );
@@ -59,7 +59,7 @@ module prim_sparse_fsm_flop #(
   `ifdef INC_ASSERT
   logic unused_assert_connected;
 
-  `ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
+  `JH_ASSERT_INIT_NET(AssertConnected_A, unused_assert_connected === 1'b1 || !EnableAlertTriggerSVA)
   `endif
 
 endmodule

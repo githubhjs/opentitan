@@ -4,9 +4,9 @@
 //
 // Common Library: Clock Gating cell with synchronizer
 
-module prim_clock_gating_sync (
-  input        clk_i,
-  input        rst_ni,
+module jh_prim_clock_gating_sync (
+  input        clk_p,
+  input        rst_n,
   input        test_en_i,
   input        async_en_i,
   output logic en_o,
@@ -14,17 +14,17 @@ module prim_clock_gating_sync (
 );
 
 
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width(1)
   ) i_sync (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i(async_en_i),
     .q_o(en_o)
   );
 
-  prim_clock_gating i_cg (
-    .clk_i,
+  jh_prim_clock_gating i_cg (
+    .clk_p,
     .en_i(en_o),
     .test_en_i,
     .clk_o

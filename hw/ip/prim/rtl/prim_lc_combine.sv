@@ -4,7 +4,7 @@
 //
 // Perform logical OR or AND between two life cycle multibit signals.
 
-module prim_lc_combine #(
+module jh_prim_lc_combine #(
   // 0: use the ON value as active value for the logical combination
   // 1: use the OFF value as active value for the logical combination
   parameter bit ActiveLow = 0,
@@ -70,4 +70,4 @@ module prim_lc_combine #(
     end
   end
 
-endmodule : prim_lc_combine
+endmodule : jh_prim_lc_combine

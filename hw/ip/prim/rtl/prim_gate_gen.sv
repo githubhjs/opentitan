@@ -31,13 +31,13 @@
 // If valid_i constantly set to 1'b1, the gate generator produces around 2.5% smaller designs for
 // the configurations listed in the table above.
 
-`include "prim_assert.sv"
-module prim_gate_gen #(
+`include "jh_prim_assert.svh"
+module jh_prim_gate_gen #(
   parameter int DataWidth = 32,
   parameter int NumGates = 1000
 ) (
-  input                        clk_i,
-  input                        rst_ni,
+  input                        clk_p,
+  input                        rst_n,
 
   input                        valid_i,
   input        [DataWidth-1:0] data_i,
@@ -57,8 +57,8 @@ module prim_gate_gen #(
   localparam int NumOuterRounds = (NumGates + GatesPerRound / 2) / GatesPerRound;
 
   // do not use for fewer than 500 GE
-  `ASSERT(MinimumNumGates_A, NumGates >= 500)
-  `ASSERT(DataMustBeMultipleOfFour_A, DataWidth % 4 == 0)
+  `JH_ASSERT(MinimumNumGates_A, NumGates >= 500)
+  `JH_ASSERT(DataMustBeMultipleOfFour_A, DataWidth % 4 == 0)
 
   /////////////////////
   // Generator Loops //
@@ -81,16 +81,16 @@ module prim_gate_gen #(
 
     for (genvar l = 0; l < NumInnerRounds; l++) begin : gen_inner
       // 2bit rotation + sbox layer
-      assign inner_data[l+1] = prim_cipher_pkg::sbox4_32bit({inner_data[l][1:0],
+      assign inner_data[l+1] = jh_prim_cipher_pkg::sbox4_32bit({inner_data[l][1:0],
                                                              inner_data[l][DataWidth-1:2]},
-                                                             prim_cipher_pkg::PRINCE_SBOX4);
+                                                             jh_prim_cipher_pkg::PRINCE_SBOX4);
     end
 
     assign regs_d[k] = inner_data[NumInnerRounds];
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_regs
+    if (!rst_n) begin
       regs_q <= '0;
       valid_q <= '0;
     end else begin
@@ -106,4 +106,4 @@ module prim_gate_gen #(
   assign data_o = regs_q[NumOuterRounds-1];
   assign valid_o = valid_q[NumOuterRounds-1];
 
-endmodule : prim_gate_gen
+endmodule : jh_prim_gate_gen

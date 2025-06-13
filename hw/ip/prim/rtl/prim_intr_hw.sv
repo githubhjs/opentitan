@@ -7,13 +7,13 @@
 // This module can be instantiated once per interrupt field, or
 // "bussified" with all fields of the interrupt vector.
 
-module prim_intr_hw # (
+module jh_prim_intr_hw # (
   parameter int unsigned Width = 1,
   parameter bit FlopOutput = 1
 ) (
   // event
-  input  clk_i,
-  input  rst_ni,
+  input  clk_p,
+  input  rst_n,
   input  [Width-1:0]  event_intr_i,
 
   // register interface
@@ -38,8 +38,8 @@ module prim_intr_hw # (
 
   if (FlopOutput == 1) begin : gen_flop_intr_output
     // flop the interrupt output
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk_p or negedge rst_n) begin
+      if (!rst_n) begin
         intr_o <= '0;
       end else begin
         intr_o <= reg2hw_intr_state_q_i & reg2hw_intr_enable_q_i;
@@ -49,8 +49,8 @@ module prim_intr_hw # (
   end else begin : gen_intr_passthrough_output
     logic unused_clk;
     logic unused_rst_n;
-    assign unused_clk = clk_i;
-    assign unused_rst_n = rst_ni;
+    assign unused_clk = clk_p;
+    assign unused_rst_n = rst_n;
     assign intr_o = reg2hw_intr_state_q_i & reg2hw_intr_enable_q_i;
   end
 

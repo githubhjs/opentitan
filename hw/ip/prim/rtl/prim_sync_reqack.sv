@@ -21,9 +21,9 @@
 // For further information, see Section 8.2.4 in H. Kaeslin, "Top-Down Digital VLSI Design: From
 // Architecture to Gate-Level Circuits and FPGAs", 2015.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_sync_reqack (
+module jh_prim_sync_reqack (
   input  clk_src_i,       // REQ side, SRC domain
   input  rst_src_ni,      // REQ side, SRC domain
   input  clk_dst_i,       // ACK side, DST domain
@@ -57,21 +57,21 @@ module prim_sync_reqack (
   assign dst_handshake = dst_req_o & dst_ack_i;
 
   // Move REQ over to DST domain.
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width(1)
   ) req_sync (
-    .clk_i  (clk_dst_i),
-    .rst_ni (rst_dst_ni),
+    .clk_p  (clk_dst_i),
+    .rst_n (rst_dst_ni),
     .d_i    (src_req_q),
     .q_o    (dst_req)
   );
 
   // Move ACK over to SRC domain.
-  prim_flop_2sync #(
+  jh_prim_flop_2sync #(
     .Width(1)
   ) ack_sync (
-    .clk_i  (clk_src_i),
-    .rst_ni (rst_src_ni),
+    .clk_p  (clk_src_i),
+    .rst_n (rst_src_ni),
     .d_i    (dst_ack_q),
     .q_o    (src_ack)
   );
@@ -171,10 +171,10 @@ module prim_sync_reqack (
   end
 
   // SRC domain can only de-assert REQ after receiving ACK.
-  `ASSERT(SyncReqAckHoldReq, $fell(src_req_i) && req_chk_i |->
+  `JH_ASSERT(SyncReqAckHoldReq, $fell(src_req_i) && req_chk_i |->
       $fell(src_ack_o), clk_src_i, !rst_src_ni || !req_chk_i)
 
   // DST domain cannot assert ACK without REQ.
-  `ASSERT(SyncReqAckAckNeedsReq, dst_ack_i |-> dst_req_o, clk_dst_i, !rst_dst_ni)
+  `JH_ASSERT(SyncReqAckAckNeedsReq, dst_ack_i |-> dst_req_o, clk_dst_i, !rst_dst_ni)
 
 endmodule

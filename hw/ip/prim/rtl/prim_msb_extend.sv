@@ -4,9 +4,9 @@
 //
 // Extend the output with the msb of the input
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_msb_extend # (
+module jh_prim_msb_extend # (
   parameter int InWidth = 2,
   parameter int OutWidth = 2
 ) (
@@ -14,7 +14,7 @@ module prim_msb_extend # (
   output [OutWidth-1:0] out_o
 );
 
-  `ASSERT_INIT(WidthCheck_A, OutWidth >= InWidth)
+  `JH_ASSERT_INIT(WidthCheck_A, OutWidth >= InWidth)
 
   localparam int WidthDiff = OutWidth - InWidth;
 

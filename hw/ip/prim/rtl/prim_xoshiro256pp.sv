@@ -12,9 +12,9 @@
 //       [2] https://prng.di.unimi.it/
 //       [3] https://en.wikipedia.org/wiki/Xorshift#xoshiro_and_xoroshiro
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_xoshiro256pp #(
+module jh_prim_xoshiro256pp #(
   // Output width, must be a multiple of 64
   parameter int unsigned       OutputDw       = 64,
   // PRNG reset state, must be nonzero!
@@ -22,8 +22,8 @@ module prim_xoshiro256pp #(
 
   parameter int unsigned NumStages = OutputDw / 64 // derived parameter
 ) (
-  input  logic                  clk_i,
-  input  logic                  rst_ni,
+  input  logic                  clk_p,
+  input  logic                  rst_n,
   input  logic                  seed_en_i,    // load external seed into the state
   input  logic [255:0]          seed_i,       // external seed input
   input  logic                  xoshiro_en_i, // enables the PRNG
@@ -67,8 +67,8 @@ module prim_xoshiro256pp #(
                      (xoshiro_en_i && lockup) ? DefaultSeed        :
                      (xoshiro_en_i)           ? next_xoshiro_state : xoshiro_q;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_reg_state
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_reg_state
+    if (!rst_n) begin
       xoshiro_q <= DefaultSeed;
     end else begin
       xoshiro_q <= xoshiro_d;
@@ -82,6 +82,6 @@ module prim_xoshiro256pp #(
   assign all_zero_o = lockup;
 
   // check that seed is not all-zero
-  `ASSERT_INIT(DefaultSeedNzCheck_A, |DefaultSeed)
+  `JH_ASSERT_INIT(DefaultSeedNzCheck_A, |DefaultSeed)
 
 endmodule

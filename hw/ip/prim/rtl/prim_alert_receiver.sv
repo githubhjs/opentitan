@@ -25,19 +25,19 @@
 // Note that in case of synchronous operation, alerts on the diffpair are
 // decoded combinationally and forwarded on alert_o within the same cycle.
 //
-// See also: prim_alert_sender, prim_diff_decode, alert_handler
+// See also: jh_prim_alert_sender, jh_prim_diff_decode, alert_handler
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_alert_receiver
-  import prim_alert_pkg::*;
-  import prim_mubi_pkg::mubi4_t;
+module jh_prim_alert_receiver
+  import jh_prim_alert_pkg::*;
+  import jh_prim_mubi_pkg::mubi4_t;
 #(
   // enables additional synchronization logic
   parameter bit AsyncOn = 1'b0
 ) (
-  input             clk_i,
-  input             rst_ni,
+  input             clk_p,
+  input             rst_n,
   // if set to lc_ctrl_pkg::On, this triggers the in-band alert channel
   // reset, which resets both the sender and receiver FSMs into IDLE.
   input mubi4_t     init_trig_i,
@@ -56,7 +56,7 @@ module prim_alert_receiver
   input alert_tx_t  alert_tx_i
 );
 
-  import prim_mubi_pkg::mubi4_test_true_strict;
+  import jh_prim_mubi_pkg::mubi4_test_true_strict;
 
   /////////////////////////////////
   // decode differential signals //
@@ -64,7 +64,7 @@ module prim_alert_receiver
   logic alert_level, alert_sigint, alert_p, alert_n;
 
   // This prevents further tool optimizations of the differential signal.
-  prim_sec_anchor_buf #(
+  jh_prim_sec_anchor_buf #(
     .Width(2)
   ) u_prim_buf_in (
     .in_i({alert_tx_i.alert_n,
@@ -73,11 +73,11 @@ module prim_alert_receiver
             alert_p})
   );
 
-  prim_diff_decode #(
+  jh_prim_diff_decode #(
     .AsyncOn(AsyncOn)
   ) u_decode_alert (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .diff_pi  ( alert_p            ),
     .diff_ni  ( alert_n            ),
     .level_o  ( alert_level        ),
@@ -112,24 +112,24 @@ module prim_alert_receiver
   assign ping_tog_dn = ~ping_tog_pd;
 
   // This prevents further tool optimizations of the differential signal.
-  prim_sec_anchor_flop #(
+  jh_prim_sec_anchor_flop #(
     .Width     (2),
     .ResetValue(2'b10)
   ) u_prim_generic_flop_ack (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i({ack_dn,
           ack_pd}),
     .q_o({ack_nq,
           ack_pq})
   );
 
-  prim_sec_anchor_flop #(
+  jh_prim_sec_anchor_flop #(
     .Width     (2),
     .ResetValue(2'b10)
   ) u_prim_generic_flop_ping (
-    .clk_i,
-    .rst_ni,
+    .clk_p,
+    .rst_n,
     .d_i({ping_tog_dn,
           ping_tog_pd}),
     .q_o({ping_tog_nq,
@@ -249,8 +249,8 @@ module prim_alert_receiver
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : p_reg
-    if (!rst_ni) begin
+  always_ff @(posedge clk_p or negedge rst_n) begin : p_reg
+    if (!rst_n) begin
       // Reset into the init request so that an alert handler reset implicitly
       // triggers an in-band reset of all alert channels.
       state_q        <= InitReq;
@@ -269,34 +269,34 @@ module prim_alert_receiver
   ////////////////
 
 `ifdef INC_ASSERT
-  import prim_mubi_pkg::mubi4_test_false_loose;
+  import jh_prim_mubi_pkg::mubi4_test_false_loose;
 `endif
 
   // check whether all outputs have a good known state after reset
-  `ASSERT_KNOWN(PingOkKnownO_A, ping_ok_o)
-  `ASSERT_KNOWN(IntegFailKnownO_A, integ_fail_o)
-  `ASSERT_KNOWN(AlertKnownO_A, alert_o)
-  `ASSERT_KNOWN(PingPKnownO_A, alert_rx_o)
+  `JH_ASSERT_KNOWN(PingOkKnownO_A, ping_ok_o)
+  `JH_ASSERT_KNOWN(IntegFailKnownO_A, integ_fail_o)
+  `JH_ASSERT_KNOWN(AlertKnownO_A, alert_o)
+  `JH_ASSERT_KNOWN(PingPKnownO_A, alert_rx_o)
 
   // check encoding of outgoing diffpairs. note that during init, the outgoing diffpairs are
   // supposed to be incorrectly encoded on purpose.
   // shift sequence two cycles to the right to avoid reset effects.
-  `ASSERT(PingDiffOk_A, alert_rx_o.ping_p ^ alert_rx_o.ping_n)
-  `ASSERT(AckDiffOk_A, ##2 $past(send_init) ^ alert_rx_o.ack_p ^ alert_rx_o.ack_n)
-  `ASSERT(InitReq_A, mubi4_test_true_strict(init_trig_i) &&
+  `JH_ASSERT(PingDiffOk_A, alert_rx_o.ping_p ^ alert_rx_o.ping_n)
+  `JH_ASSERT(AckDiffOk_A, ##2 $past(send_init) ^ alert_rx_o.ack_p ^ alert_rx_o.ack_n)
+  `JH_ASSERT(InitReq_A, mubi4_test_true_strict(init_trig_i) &&
           !(state_q inside {InitReq, InitAckWait}) |=> send_init)
 
   // ping request at input -> need to see encoded ping request
-  `ASSERT(PingRequest0_A, ##1 $rose(ping_req_i) && !state_q inside {InitReq, InitAckWait}
+  `JH_ASSERT(PingRequest0_A, ##1 $rose(ping_req_i) && !state_q inside {InitReq, InitAckWait}
       |=> $changed(alert_rx_o.ping_p))
   // ping response implies it has been requested
-  `ASSERT(PingResponse0_A, ping_ok_o |-> ping_pending_q)
+  `JH_ASSERT(PingResponse0_A, ping_ok_o |-> ping_pending_q)
   // correctly latch ping request
-  `ASSERT(PingPending_A, ##1 $rose(ping_req_i) |=> ping_pending_q)
+  `JH_ASSERT(PingPending_A, ##1 $rose(ping_req_i) |=> ping_pending_q)
 
   if (AsyncOn) begin : gen_async_assert
     // signal integrity check propagation
-    `ASSERT(SigInt_A,
+    `JH_ASSERT(SigInt_A,
         alert_tx_i.alert_p == alert_tx_i.alert_n [*2] ##2
         !(state_q inside {InitReq, InitAckWait}) &&
         mubi4_test_false_loose(init_trig_i)
@@ -304,56 +304,56 @@ module prim_alert_receiver
         integ_fail_o)
     // TODO: need to add skewed cases as well, the assertions below assume no skew at the moment
     // ping response
-    `ASSERT(PingResponse1_A,
+    `JH_ASSERT(PingResponse1_A,
         ##1 $rose(alert_tx_i.alert_p) &&
         (alert_tx_i.alert_p ^ alert_tx_i.alert_n) ##2
         state_q == Idle && ping_pending_q
         |->
         ping_ok_o,
-        clk_i, !rst_ni || integ_fail_o || mubi4_test_true_strict(init_trig_i))
+        clk_p, !rst_n || integ_fail_o || mubi4_test_true_strict(init_trig_i))
     // alert
-    `ASSERT(Alert_A,
+    `JH_ASSERT(Alert_A,
         ##1 $rose(alert_tx_i.alert_p) &&
         (alert_tx_i.alert_p ^ alert_tx_i.alert_n) ##2
         state_q == Idle &&
         !ping_pending_q
         |->
         alert_o,
-        clk_i, !rst_ni || integ_fail_o || mubi4_test_true_strict(init_trig_i))
+        clk_p, !rst_n || integ_fail_o || mubi4_test_true_strict(init_trig_i))
   end else begin : gen_sync_assert
     // signal integrity check propagation
-    `ASSERT(SigInt_A,
+    `JH_ASSERT(SigInt_A,
         alert_tx_i.alert_p == alert_tx_i.alert_n &&
         !(state_q inside {InitReq, InitAckWait}) &&
         mubi4_test_false_loose(init_trig_i)
         |->
         integ_fail_o)
     // ping response
-    `ASSERT(PingResponse1_A,
+    `JH_ASSERT(PingResponse1_A,
         ##1 $rose(alert_tx_i.alert_p) &&
         state_q == Idle &&
         ping_pending_q
         |->
         ping_ok_o,
-        clk_i, !rst_ni || integ_fail_o || mubi4_test_true_strict(init_trig_i))
+        clk_p, !rst_n || integ_fail_o || mubi4_test_true_strict(init_trig_i))
     // alert
-    `ASSERT(Alert_A,
+    `JH_ASSERT(Alert_A,
         ##1 $rose(alert_tx_i.alert_p) &&
         state_q == Idle &&
         !ping_pending_q
         |->
         alert_o,
-        clk_i, !rst_ni || integ_fail_o || mubi4_test_true_strict(init_trig_i))
+        clk_p, !rst_n || integ_fail_o || mubi4_test_true_strict(init_trig_i))
   end
 
   // check in-band init request is always accepted
-  `ASSERT(InBandInitRequest_A,
+  `JH_ASSERT(InBandInitRequest_A,
       mubi4_test_true_strict(init_trig_i) &&
       state_q != InitAckWait
       |=>
       state_q == InitReq)
   // check in-band init sequence moves FSM into IDLE state
-  `ASSERT(InBandInitSequence_A,
+  `JH_ASSERT(InBandInitSequence_A,
       (state_q == InitReq &&
       mubi4_test_true_strict(init_trig_i)) ##1
       (alert_sigint &&
@@ -363,24 +363,24 @@ module prim_alert_receiver
       |=>
       state_q == Idle)
   // check there are no spurious alerts during init
-  `ASSERT(NoSpuriousAlertsDuringInit_A,
+  `JH_ASSERT(NoSpuriousAlertsDuringInit_A,
       mubi4_test_true_strict(init_trig_i) ||
       (state_q inside {InitReq, InitAckWait})
       |->
       !alert_o)
   // check that there are no spurious ping OKs
-  `ASSERT(NoSpuriousPingOksDuringInit_A,
+  `JH_ASSERT(NoSpuriousPingOksDuringInit_A,
       (mubi4_test_true_strict(init_trig_i) ||
       (state_q inside {InitReq, InitAckWait})) &&
       !ping_pending_q
       |->
       !ping_ok_o)
   // check ping request is bypassed when in init state
-  `ASSERT(PingOkBypassDuringInit_A,
+  `JH_ASSERT(PingOkBypassDuringInit_A,
       $rose(ping_req_i) ##1
       state_q == InitReq &&
       mubi4_test_true_strict(init_trig_i)
       |->
       ping_ok_o)
 
-endmodule : prim_alert_receiver
+endmodule : jh_prim_alert_receiver

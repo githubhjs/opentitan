@@ -4,7 +4,7 @@
 //
 // Register slice conforming to Comportibility guide.
 
-module prim_subreg_ext #(
+module jh_prim_subreg_ext #(
   parameter int unsigned DW = 32
 ) (
   input          re,

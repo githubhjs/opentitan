@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 //
-// prim_keccak is single round permutation module
-`include "prim_assert.sv"
-module prim_keccak #(
+// jh_prim_keccak is single round permutation module
+`include "jh_prim_assert.svh"
+module jh_prim_keccak #(
   parameter int Width = 1600, // b= {25, 50, 100, 200, 400, 800, 1600}
 
   // Derived
@@ -72,10 +72,10 @@ module prim_keccak #(
   // Assertions //
   ////////////////
 
-  `ASSERT_INIT(ValidWidth_A, Width inside {25, 50, 100, 200, 400, 800, 1600})
-  `ASSERT_INIT(ValidW_A, W inside {1, 2, 4, 8, 16, 32, 64})
-  `ASSERT_INIT(ValidL_A, L inside {0, 1, 2, 3, 4, 5, 6})
-  `ASSERT_INIT(ValidRound_A, MaxRound <= 24) // Keccak-f only
+  `JH_ASSERT_INIT(ValidWidth_A, Width inside {25, 50, 100, 200, 400, 800, 1600})
+  `JH_ASSERT_INIT(ValidW_A, W inside {1, 2, 4, 8, 16, 32, 64})
+  `JH_ASSERT_INIT(ValidL_A, L inside {0, 1, 2, 3, 4, 5, 6})
+  `JH_ASSERT_INIT(ValidRound_A, MaxRound <= 24) // Keccak-f only
 
   ///////////////
   // Functions //

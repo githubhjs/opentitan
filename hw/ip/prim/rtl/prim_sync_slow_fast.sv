@@ -12,7 +12,7 @@
 //
 // A ratio of at-least 10:1 in clock speeds is recommended.
 
-module prim_sync_slow_fast #(
+module jh_prim_sync_slow_fast #(
   parameter int unsigned Width = 32
 ) (
   input  logic             clk_slow_i,
@@ -27,9 +27,9 @@ module prim_sync_slow_fast #(
   logic [Width-1:0] wdata_q;
 
   // Synchronize the slow clock to the fast domain
-  prim_flop_2sync #(.Width(1)) sync_slow_clk (
-    .clk_i    (clk_fast_i),
-    .rst_ni   (rst_fast_ni),
+  jh_prim_flop_2sync #(.Width(1)) sync_slow_clk (
+    .clk_p    (clk_fast_i),
+    .rst_n   (rst_fast_ni),
     .d_i      (clk_slow_i),
     .q_o      (sync_clk_slow));
 

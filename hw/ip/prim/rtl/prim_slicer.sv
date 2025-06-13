@@ -5,9 +5,9 @@
 // Slicer chops the incoming bitstring into OutW granularity.
 // It supports fractional InW/OutW which fills 0 at the end of message.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_slicer #(
+module jh_prim_slicer #(
   parameter int InW = 64,
   parameter int OutW = 8,
 
@@ -26,7 +26,7 @@ module prim_slicer #(
 
   assign data_o = unrolled_data[sel_i*OutW+:OutW];
 
-  `ASSERT_INIT(ValidWidth_A, InW <= OutW*(2**IndexW))
+  `JH_ASSERT_INIT(ValidWidth_A, InW <= OutW*(2**IndexW))
 
 endmodule
 

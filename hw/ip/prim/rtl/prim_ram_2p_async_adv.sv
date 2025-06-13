@@ -13,9 +13,9 @@
 // Note that the write mask needs to be per Byte if parity is enabled. If ECC is enabled, the write
 // mask cannot be used and has to be tied to {Width{1'b1}}.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
+module jh_prim_ram_2p_async_adv import jh_prim_ram_2p_pkg::*; #(
   parameter  int Depth                = 512,
   parameter  int Width                = 32,
   parameter  int DataBitsPerMask      = 1,  // Number of data bits per bit of write mask
@@ -32,7 +32,7 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
   // since this results in a more compact and faster implementation.
   parameter bit HammingECC            = 0,
 
-  localparam int Aw                   = prim_util_pkg::vbits(Depth)
+  localparam int Aw                   = jh_prim_util_pkg::vbits(Depth)
 ) (
   input clk_a_i,
   input clk_b_i,
@@ -62,7 +62,7 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
 );
 
 
-  `ASSERT_INIT(CannotHaveEccAndParity_A, !(EnableParity && EnableECC))
+  `JH_ASSERT_INIT(CannotHaveEccAndParity_A, !(EnableParity && EnableECC))
 
   // Calculate ECC width
   localparam int ParWidth  = (EnableParity) ? Width/8 :
@@ -105,7 +105,7 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
   logic [TotalWidth-1:0]   b_rdata_sram ;
   logic [1:0]              b_rerror_q, b_rerror_d ;
 
-  prim_ram_2p #(
+  jh_prim_ram_2p #(
     .MemInitFile     (MemInitFile),
 
     .Width           (TotalWidth),
@@ -168,12 +168,12 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
   if (EnableParity == 0 && EnableECC) begin : gen_secded
 
     // check supported widths
-    `ASSERT_INIT(SecDecWidth_A, Width inside {32})
+    `JH_ASSERT_INIT(SecDecWidth_A, Width inside {32})
 
     // the wmask is constantly set to 1 in this case
-    `ASSERT(OnlyWordWritePossibleWithEccPortA_A, a_req_i |->
+    `JH_ASSERT(OnlyWordWritePossibleWithEccPortA_A, a_req_i |->
         a_wmask_i == {Width{1'b1}}, clk_a_i, rst_a_ni)
-    `ASSERT(OnlyWordWritePossibleWithEccPortB_A, b_req_i |->
+    `JH_ASSERT(OnlyWordWritePossibleWithEccPortB_A, b_req_i |->
         b_wmask_i == {Width{1'b1}}, clk_b_i, rst_b_ni)
 
     assign a_wmask_d = {TotalWidth{1'b1}};
@@ -181,42 +181,42 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
 
     if (Width == 32) begin : gen_secded_39_32
       if (HammingECC) begin : gen_hamming
-        prim_secded_inv_hamming_39_32_enc u_enc_a (
+        jh_prim_secded_inv_hamming_39_32_enc u_enc_a (
           .data_i(a_wdata_i),
           .data_o(a_wdata_d)
         );
-        prim_secded_inv_hamming_39_32_dec u_dec_a (
+        jh_prim_secded_inv_hamming_39_32_dec u_dec_a (
           .data_i     (a_rdata_sram),
           .data_o     (a_rdata_d[0+:Width]),
           .syndrome_o ( ),
           .err_o      (a_rerror_d)
         );
-        prim_secded_inv_hamming_39_32_enc u_enc_b (
+        jh_prim_secded_inv_hamming_39_32_enc u_enc_b (
           .data_i(b_wdata_i),
           .data_o(b_wdata_d)
         );
-        prim_secded_inv_hamming_39_32_dec u_dec_b (
+        jh_prim_secded_inv_hamming_39_32_dec u_dec_b (
           .data_i     (b_rdata_sram),
           .data_o     (b_rdata_d[0+:Width]),
           .syndrome_o ( ),
           .err_o      (b_rerror_d)
         );
       end else begin : gen_hsiao
-        prim_secded_inv_39_32_enc u_enc_a (
+        jh_prim_secded_inv_39_32_enc u_enc_a (
           .data_i(a_wdata_i),
           .data_o(a_wdata_d)
         );
-        prim_secded_inv_39_32_dec u_dec_a (
+        jh_prim_secded_inv_39_32_dec u_dec_a (
           .data_i     (a_rdata_sram),
           .data_o     (a_rdata_d[0+:Width]),
           .syndrome_o ( ),
           .err_o      (a_rerror_d)
         );
-        prim_secded_inv_39_32_enc u_enc_b (
+        jh_prim_secded_inv_39_32_enc u_enc_b (
           .data_i(b_wdata_i),
           .data_o(b_wdata_d)
         );
-        prim_secded_inv_39_32_dec u_dec_b (
+        jh_prim_secded_inv_39_32_dec u_dec_b (
           .data_i     (b_rdata_sram),
           .data_o     (b_rdata_d[0+:Width]),
           .syndrome_o ( ),
@@ -226,8 +226,8 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
     end
   end else if (EnableParity) begin : gen_byte_parity
 
-    `ASSERT_INIT(ParityNeedsByteWriteMask_A, DataBitsPerMask == 8)
-    `ASSERT_INIT(WidthNeedsToBeByteAligned_A, Width % 8 == 0)
+    `JH_ASSERT_INIT(ParityNeedsByteWriteMask_A, DataBitsPerMask == 8)
+    `JH_ASSERT_INIT(WidthNeedsToBeByteAligned_A, Width % 8 == 0)
 
     always_comb begin : p_parity
       a_rerror_d = '0;
@@ -355,4 +355,4 @@ module prim_ram_2p_async_adv import prim_ram_2p_pkg::*; #(
     assign b_rerror_q = b_rerror_d & {2{b_rvalid_d}};
   end
 
-endmodule : prim_ram_2p_async_adv
+endmodule : jh_prim_ram_2p_async_adv

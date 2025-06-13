@@ -4,9 +4,9 @@
 //
 // Generic asynchronous fifo for use in a variety of devices.
 
-`include "prim_assert.sv"
+`include "jh_prim_assert.svh"
 
-module prim_fifo_async #(
+module jh_prim_fifo_async #(
   parameter  int unsigned Width  = 16,
   parameter  int unsigned Depth  = 4,
   parameter  bit OutputZeroIfEmpty = 1'b0, // if == 1 always output 0 when FIFO is empty
@@ -30,7 +30,7 @@ module prim_fifo_async #(
 );
 
   // Depth must be a power of 2 for the gray code pointers to work
-  `ASSERT_INIT(ParamCheckDepth_A, (Depth == 2**$clog2(Depth)))
+  `JH_ASSERT_INIT(ParamCheckDepth_A, (Depth == 2**$clog2(Depth)))
 
   localparam int unsigned PTRV_W    = (Depth == 1) ? 1 : $clog2(Depth);
   localparam int unsigned PTR_WIDTH = (Depth == 1) ? 1 : PTRV_W+1;
@@ -72,9 +72,9 @@ module prim_fifo_async #(
   end
 
   // sync gray-coded pointer to read clk
-  prim_flop_2sync #(.Width(PTR_WIDTH)) sync_wptr (
-    .clk_i    (clk_rd_i),
-    .rst_ni   (rst_rd_ni),
+  jh_prim_flop_2sync #(.Width(PTR_WIDTH)) sync_wptr (
+    .clk_p    (clk_rd_i),
+    .rst_n   (rst_rd_ni),
     .d_i      (fifo_wptr_gray_q),
     .q_o      (fifo_wptr_gray_sync));
 
@@ -105,9 +105,9 @@ module prim_fifo_async #(
   end
 
   // sync gray-coded pointer to write clk
-  prim_flop_2sync #(.Width(PTR_WIDTH)) sync_rptr (
-    .clk_i    (clk_wr_i),
-    .rst_ni   (rst_wr_ni),
+  jh_prim_flop_2sync #(.Width(PTR_WIDTH)) sync_rptr (
+    .clk_p    (clk_wr_i),
+    .rst_n   (rst_wr_ni),
     .d_i      (fifo_rptr_gray_q),
     .q_o      (fifo_rptr_gray_sync));
 
@@ -278,9 +278,9 @@ module prim_fifo_async #(
   end
 
   // TODO: assertions on full, empty
-  `ASSERT(GrayWptr_A, ##1 $countones(fifo_wptr_gray_q ^ $past(fifo_wptr_gray_q)) <= 1,
+  `JH_ASSERT(GrayWptr_A, ##1 $countones(fifo_wptr_gray_q ^ $past(fifo_wptr_gray_q)) <= 1,
           clk_wr_i, !rst_wr_ni)
-  `ASSERT(GrayRptr_A, ##1 $countones(fifo_rptr_gray_q ^ $past(fifo_rptr_gray_q)) <= 1,
+  `JH_ASSERT(GrayRptr_A, ##1 $countones(fifo_rptr_gray_q ^ $past(fifo_rptr_gray_q)) <= 1,
           clk_rd_i, !rst_rd_ni)
 
 endmodule

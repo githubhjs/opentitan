@@ -8,7 +8,7 @@
 // appropriately apart from each other depending on the clock frequency ratio
 // of the two clock domains.
 
-module prim_pulse_sync (
+module jh_prim_pulse_sync (
   // source clock domain
   input  logic clk_src_i,
   input  logic rst_src_ni,
@@ -51,7 +51,7 @@ module prim_pulse_sync (
     end
   end
 
- `ASSERT(SrcPulseCheck_M, src_pulse_i |-> !src_active_flag, clk_src_i, !rst_src_ni)
+ `JH_ASSERT(SrcPulseCheck_M, src_pulse_i |-> !src_active_flag, clk_src_i, !rst_src_ni)
 `endif
 
   //////////////////////////////////////////////////////////
@@ -59,12 +59,12 @@ module prim_pulse_sync (
   //////////////////////////////////////////////////////////
   logic dst_level;
 
-  prim_flop_2sync #(.Width(1)) prim_flop_2sync (
+  jh_prim_flop_2sync #(.Width(1)) jh_prim_flop_2sync (
     // source clock domain
     .d_i    (src_level),
     // destination clock domain
-    .clk_i  (clk_dst_i),
-    .rst_ni (rst_dst_ni),
+    .clk_p  (clk_dst_i),
+    .rst_n (rst_dst_ni),
     .q_o    (dst_level)
   );
 
@@ -85,6 +85,6 @@ module prim_pulse_sync (
   // edge detection
   assign dst_pulse_o = dst_level_q ^ dst_level;
 
-  `ASSERT(DstPulseCheck_A, dst_pulse_o |=> !dst_pulse_o, clk_dst_i, !rst_dst_ni)
+  `JH_ASSERT(DstPulseCheck_A, dst_pulse_o |=> !dst_pulse_o, clk_dst_i, !rst_dst_ni)
 
 endmodule

@@ -30,8 +30,8 @@
 //
 // - RandDelayInterval: If this delay mode is picked, the mask `out_data_mask` used to
 //                      combine `src_data_with_latency` and `src_data_delayed` is fully
-//                      randomized every `prim_cdc_rand_delay_interval` times the src_data
-//                      value changes. If the `prim_cdc_rand_delay_interval` is set to 0,
+//                      randomized every `jh_prim_cdc_rand_delay_interval` times the src_data
+//                      value changes. If the `jh_prim_cdc_rand_delay_interval` is set to 0,
 //                      then out_data_mask is randomized on every src_data change.
 //
 // DV has control of the weights corresponding to each random delay mode when the delay mode is
@@ -40,7 +40,7 @@
 // DV also has control over whether the source clock is used, the latency, and the jitter values -
 // these can be modified through the provided setter tasks.
 
-module prim_cdc_rand_delay #(
+module jh_prim_cdc_rand_delay #(
     parameter int DataWidth = 1,
     parameter bit UseSourceClock = 1,
     parameter int LatencyPs = 1000,
@@ -53,9 +53,9 @@ module prim_cdc_rand_delay #(
     output logic [DataWidth-1:0]  dst_data
 );
 
-  `ASSERT_INIT(LegalDataWidth_A, DataWidth > 0)
-  `ASSERT_INIT(LegalLatencyPs_A, LatencyPs >= 0)
-  `ASSERT_INIT(LegalJitterPs_A,  JitterPs >= 0)
+  `JH_ASSERT_INIT(LegalDataWidth_A, DataWidth > 0)
+  `JH_ASSERT_INIT(LegalLatencyPs_A, LatencyPs >= 0)
+  `JH_ASSERT_INIT(LegalJitterPs_A,  JitterPs >= 0)
 
 `ifdef SIMULATION
 `ifndef DISABLE_PRIM_CDC_RAND_DELAY
@@ -71,46 +71,46 @@ module prim_cdc_rand_delay #(
     RandDelayModeInterval
   } rand_delay_mode_e;
 
-  rand_delay_mode_e prim_cdc_rand_delay_mode;
-  int unsigned prim_cdc_rand_delay_interval = 10;
-  int unsigned prim_cdc_rand_delay_disable_weight  = 1;
-  int unsigned prim_cdc_rand_delay_slow_weight     = 2;
-  int unsigned prim_cdc_rand_delay_once_weight     = 4;
-  int unsigned prim_cdc_rand_delay_interval_weight = 3;
-  bit [3:0] mode;  // onehot encoded version of prim_cdc_rand_delay_mode.
+  rand_delay_mode_e jh_prim_cdc_rand_delay_mode;
+  int unsigned jh_prim_cdc_rand_delay_interval = 10;
+  int unsigned jh_prim_cdc_rand_delay_disable_weight  = 1;
+  int unsigned jh_prim_cdc_rand_delay_slow_weight     = 2;
+  int unsigned jh_prim_cdc_rand_delay_once_weight     = 4;
+  int unsigned jh_prim_cdc_rand_delay_interval_weight = 3;
+  bit [3:0] mode;  // onehot encoded version of jh_prim_cdc_rand_delay_mode.
 
-  int unsigned prim_cdc_jitter_ps = JitterPs;
-  int unsigned prim_cdc_latency_ps = LatencyPs;
+  int unsigned jh_prim_cdc_jitter_ps = JitterPs;
+  int unsigned jh_prim_cdc_latency_ps = LatencyPs;
 
   logic [DataWidth-1:0] out_data_mask;
   logic [DataWidth-1:0] src_data_with_latency;
   logic [DataWidth-1:0] src_data_delayed;
 
   function automatic void set_prim_cdc_rand_delay_mode(int val);
-    prim_cdc_rand_delay_mode = rand_delay_mode_e'(val);
+    jh_prim_cdc_rand_delay_mode = rand_delay_mode_e'(val);
     update_settings();
   endfunction
 
   function automatic void set_prim_cdc_rand_delay_interval(int unsigned val);
-    prim_cdc_rand_delay_interval = val;
+    jh_prim_cdc_rand_delay_interval = val;
   endfunction
 
   function automatic void set_prim_cdc_jitter_ps(int val);
-    `ASSERT_I(LegalJitter_A, prim_cdc_jitter_ps >= 0)
-    prim_cdc_jitter_ps = val;
+    `JH_ASSERT_I(LegalJitter_A, jh_prim_cdc_jitter_ps >= 0)
+    jh_prim_cdc_jitter_ps = val;
   endfunction
 
   function automatic void set_prim_cdc_latency_ps(int val);
-    `ASSERT_I(LegalLatencyPs_A, val >= 0)
-    prim_cdc_latency_ps = val;
+    `JH_ASSERT_I(LegalLatencyPs_A, val >= 0)
+    jh_prim_cdc_latency_ps = val;
   endfunction
 
-  // Internal method called after prim_cdc_rand_delay_mode is set.
+  // Internal method called after jh_prim_cdc_rand_delay_mode is set.
   function automatic void update_settings();
     mode = '0;
-    mode[prim_cdc_rand_delay_mode] = 1'b1;
-    if (prim_cdc_rand_delay_mode == RandDelayModeSlow) out_data_mask = '1;
-    if (prim_cdc_rand_delay_mode == RandDelayModeOnce) fast_randomize(out_data_mask);
+    mode[jh_prim_cdc_rand_delay_mode] = 1'b1;
+    if (jh_prim_cdc_rand_delay_mode == RandDelayModeSlow) out_data_mask = '1;
+    if (jh_prim_cdc_rand_delay_mode == RandDelayModeOnce) fast_randomize(out_data_mask);
   endfunction
 
   // A slightly more performant version of std::randomize(), using $urandom.
@@ -126,31 +126,31 @@ module prim_cdc_rand_delay #(
   // Retrieves settings via plusargs.
   //
   // prefix is a string prefix to retrieve the plusarg.
-  // Returns 1 if prim_cdc_rand_delay_mode was set, else 0.
+  // Returns 1 if jh_prim_cdc_rand_delay_mode was set, else 0.
   function automatic bit get_plusargs(string prefix = "");
     string mode = "";
     int unsigned val;
     if (prefix != "") prefix = {prefix, "."};
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_mode=%0s"}, mode));
-    `ASSERT_I(ValidMode_A, mode inside {"", "disable", "slow", "once", "interval"})
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_interval=%0d"},
-                          prim_cdc_rand_delay_interval));
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_disable_weight=%0d"},
-                          prim_cdc_rand_delay_disable_weight));
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_slow_weight=%0d"},
-                          prim_cdc_rand_delay_slow_weight));
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_once_weight=%0d"},
-                          prim_cdc_rand_delay_once_weight));
-    void'($value$plusargs({prefix, "prim_cdc_rand_delay_interval_weight=%0d"},
-                          prim_cdc_rand_delay_interval_weight));
-    void'($value$plusargs({prefix, "prim_cdc_jitter_ps=%0d"}, prim_cdc_jitter_ps));
-    void'($value$plusargs({prefix, "prim_cdc_latency_ps=%0d"}, prim_cdc_latency_ps));
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_mode=%0s"}, mode));
+    `JH_ASSERT_I(ValidMode_A, mode inside {"", "disable", "slow", "once", "interval"})
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_interval=%0d"},
+                          jh_prim_cdc_rand_delay_interval));
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_disable_weight=%0d"},
+                          jh_prim_cdc_rand_delay_disable_weight));
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_slow_weight=%0d"},
+                          jh_prim_cdc_rand_delay_slow_weight));
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_once_weight=%0d"},
+                          jh_prim_cdc_rand_delay_once_weight));
+    void'($value$plusargs({prefix, "jh_prim_cdc_rand_delay_interval_weight=%0d"},
+                          jh_prim_cdc_rand_delay_interval_weight));
+    void'($value$plusargs({prefix, "jh_prim_cdc_jitter_ps=%0d"}, jh_prim_cdc_jitter_ps));
+    void'($value$plusargs({prefix, "jh_prim_cdc_latency_ps=%0d"}, jh_prim_cdc_latency_ps));
 
     case (mode)
-      "disable":  prim_cdc_rand_delay_mode = RandDelayModeDisable;
-      "slow":     prim_cdc_rand_delay_mode = RandDelayModeSlow;
-      "once":     prim_cdc_rand_delay_mode = RandDelayModeOnce;
-      "interval": prim_cdc_rand_delay_mode = RandDelayModeInterval;
+      "disable":  jh_prim_cdc_rand_delay_mode = RandDelayModeDisable;
+      "slow":     jh_prim_cdc_rand_delay_mode = RandDelayModeSlow;
+      "once":     jh_prim_cdc_rand_delay_mode = RandDelayModeOnce;
+      "interval": jh_prim_cdc_rand_delay_mode = RandDelayModeInterval;
       default:    return 0;
     endcase
     return 1;
@@ -160,20 +160,20 @@ module prim_cdc_rand_delay #(
     bit res;
 
     // Command-line override via plusargs (global, applies to ALL instances).
-    // Example: +prim_cdc_rand_delay_mode=once
+    // Example: +jh_prim_cdc_rand_delay_mode=once
     res = get_plusargs();
 
     // Command-line override via plusargs (instance-specific).
-    // Example: +tb.dut.u_foo.u_bar.u_flop_2sync.u_prim_cdc_rand_delay.prim_cdc_latency_ps=200
+    // Example: +tb.dut.u_foo.u_bar.u_flop_2sync.u_prim_cdc_rand_delay.jh_prim_cdc_latency_ps=200
     res |= get_plusargs($sformatf("%m"));
 
     if (!res) begin
-      `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(prim_cdc_rand_delay_mode,
-        prim_cdc_rand_delay_mode dist {
-          RandDelayModeDisable   :/ prim_cdc_rand_delay_disable_weight,
-          RandDelayModeSlow      :/ prim_cdc_rand_delay_slow_weight,
-          RandDelayModeOnce      :/ prim_cdc_rand_delay_once_weight,
-          RandDelayModeInterval  :/ prim_cdc_rand_delay_interval_weight
+      `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(jh_prim_cdc_rand_delay_mode,
+        jh_prim_cdc_rand_delay_mode dist {
+          RandDelayModeDisable   :/ jh_prim_cdc_rand_delay_disable_weight,
+          RandDelayModeSlow      :/ jh_prim_cdc_rand_delay_slow_weight,
+          RandDelayModeOnce      :/ jh_prim_cdc_rand_delay_once_weight,
+          RandDelayModeInterval  :/ jh_prim_cdc_rand_delay_interval_weight
         };,
       , $sformatf("%m"))
     end
@@ -195,21 +195,21 @@ module prim_cdc_rand_delay #(
 
     // If not relying on src_clk, delay by a fixed number of ps determined by the module parameters.
     always @(src_data) begin
-      src_data_with_latency <= #(prim_cdc_latency_ps * 1ps) src_data;
+      src_data_with_latency <= #(jh_prim_cdc_latency_ps * 1ps) src_data;
     end
     always @(src_data_with_latency) begin
-      src_data_delayed <= #(prim_cdc_jitter_ps * 1ps) src_data_with_latency;
+      src_data_delayed <= #(jh_prim_cdc_jitter_ps * 1ps) src_data_with_latency;
     end
 
   end : gen_no_use_source_clock
 
   // Randomize delayed random data selection when input data changes, every
-  // prim_cdc_rand_delay_interval number of changes.
+  // jh_prim_cdc_rand_delay_interval number of changes.
   int counter = 0;
   always @(src_data_with_latency) begin
     if (mode[RandDelayModeInterval]) begin
-      counter <= (counter >= prim_cdc_rand_delay_interval) ? '0 : counter + 1;
-      if (counter == prim_cdc_rand_delay_interval) fast_randomize(out_data_mask);
+      counter <= (counter >= jh_prim_cdc_rand_delay_interval) ? '0 : counter + 1;
+      if (counter == jh_prim_cdc_rand_delay_interval) fast_randomize(out_data_mask);
     end else begin
       counter <= 0;
     end

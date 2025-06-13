@@ -4,7 +4,7 @@
 
 // Common interface definitions for OTP primitives.
 
-package prim_otp_pkg;
+package jh_prim_otp_pkg;
 
   parameter int CmdWidth = 2;
   parameter int ErrWidth = 3;
@@ -23,4 +23,4 @@ package prim_otp_pkg;
     MacroWriteBlankError = 3'h4
   } err_e;
 
-endpackage : prim_otp_pkg
+endpackage : jh_prim_otp_pkg
