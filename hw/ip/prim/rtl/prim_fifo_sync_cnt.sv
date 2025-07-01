@@ -18,6 +18,9 @@ module prim_fifo_sync_cnt #(
   input incr_rptr_i,
   output logic [Width-1:0] wptr_o,
   output logic [Width-1:0] rptr_o,
+  output logic full_o,
+  output logic empty_o,
+  output logic [$clog2(Depth+1)-1:0] depth_o,
   output logic err_o
 );
 
@@ -32,6 +35,29 @@ module prim_fifo_sync_cnt #(
   assign wptr_wrap_cnt = {~wptr_o[Width-1],{(Width-1){1'b0}}};
   assign rptr_wrap_cnt = {~rptr_o[Width-1],{(Width-1){1'b0}}};
 
+  // 指標位置 (不含wrap-bit)
+  logic [Width-2:0] wptr_pos, rptr_pos;
+  assign wptr_pos = wptr_o[Width-2:0];
+  assign rptr_pos = rptr_o[Width-2:0];
+
+  // full: 指標位置相等，但wrap-bit不同
+  assign full_o  = (wptr_o == {~rptr_o[Width-1], rptr_o[Width-2:0]});
+
+  // empty: 指標完全相等
+  assign empty_o = (wptr_o == rptr_o);
+
+  // depth計算
+  always_comb begin
+    if (full_o) begin
+      depth_o = Depth;
+    end else if (wptr_o[Width-1] == rptr_o[Width-1]) begin
+      depth_o = wptr_pos - rptr_pos;
+    end else begin
+      depth_o = Depth - (rptr_pos - wptr_pos);
+    end
+  end
+
+  
   if (Secure) begin : gen_secure_ptrs
     logic wptr_err;
     prim_count #(
