@@ -1,3 +1,4 @@
+// Author: HUANGJS@gmail.com //
 `include "prim_assert.sv"
 
 module prim_fifo_sync_sram #(
