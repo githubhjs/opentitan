@@ -33,7 +33,7 @@ module boot_rom (
 
   always_ff @(posedge clk_i) begin
       if (req_i) begin
-          addr_q <= addr_i[$clog2(RomSize)-1+3:2];
+          addr_q <= addr_i[$clog2(RomSize)-1+2:2];
       end
   end
 
