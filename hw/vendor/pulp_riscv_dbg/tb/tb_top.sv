@@ -108,7 +108,7 @@ module tb_top #(
     end: timing_format
 
     // check if we succeded
-    always_ff @(posedge clk, negedge rst_n) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (tests_passed) begin
             $display("Exit Success");
             $finish;
